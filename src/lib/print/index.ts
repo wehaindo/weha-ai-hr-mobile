@@ -1,31 +1,25 @@
-// Print service: printer profiles live in the printer_profiles table; sending
-// goes through the platform bridge (raw TCP in Electron, unavailable on web).
+// Print service — sending goes through the platform bridge. Printers are
+// managed by the hardware_devices registry (see the Hardware settings page);
+// jobs are recorded in print_queue. The rest of the print stack (templates,
+// renderers, ZPL, pipeline, offline queue) is re-exported here for device apps.
 
 import type { DeviceBridge } from '@/platform';
-import { generateId } from '@/lib/id';
+import { PrinterAdapter, type PrinterConnectionConfig } from './printer-adapter';
 
-export type PrinterConnectionType = 'tcp' | 'driver';
-
-export interface PrinterProfile {
-  id: string;
-  name: string;
-  connection_type: PrinterConnectionType;
-  target: string; // host:port for tcp, Windows printer name for driver
-  width_mm: number;
-  is_default: number;
-  enabled: number;
-  options: string;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface PrinterProfileInput {
-  name: string;
-  connection_type: PrinterConnectionType;
-  target: string;
-  width_mm?: number;
-  is_default?: boolean;
-}
+export * from './escpos-buffer';
+export * from './escpos';
+export * from './receipt-builder';
+export * from './receipt-renderer';
+export * from './condition-evaluator';
+export * from './template-schema';
+export * from './template-serializer';
+export * from './template-resolver';
+export * from './printer-profile';
+export * from './printer-adapter';
+export * from './print-pipeline';
+export * from './zpl-generator';
+export * from './offline/offline-renderer';
+export * from './offline/queue-processor';
 
 export type PrintJobStatus = 'pending' | 'done' | 'failed';
 
@@ -45,63 +39,38 @@ function now(): string {
   return new Date().toISOString();
 }
 
+/** Route compiled bytes to the right bridge capability by connection type. */
+async function dispatchBytes(
+  bridge: DeviceBridge,
+  bytes: Uint8Array,
+  connection: PrinterConnectionConfig
+): Promise<void> {
+  if (connection.type === 'serial') {
+    await bridge.hardware.serial({ port_path: connection.port_path ?? '', baud_rate: connection.baud_rate }, bytes);
+    return;
+  }
+  const target =
+    connection.type === 'network' ? `${connection.ip ?? ''}:${connection.port ?? 9100}` : connection.system_name ?? '';
+  await bridge.print.raw(target, bytes);
+}
+
 export class PrintService {
   constructor(private bridge: DeviceBridge) {}
 
-  // ---- profiles ----
-
-  async listProfiles(): Promise<PrinterProfile[]> {
-    return this.bridge.db.query<PrinterProfile>('SELECT * FROM printer_profiles ORDER BY is_default DESC, name ASC');
-  }
-
-  async createProfile(input: PrinterProfileInput): Promise<PrinterProfile> {
-    const id = generateId();
-    const timestamp = now();
-    if (input.is_default) {
-      await this.bridge.db.execute('UPDATE printer_profiles SET is_default = 0, updated_at = ?', [timestamp]);
-    }
-    await this.bridge.db.execute(
-      `INSERT INTO printer_profiles (id, name, connection_type, target, width_mm, is_default, enabled, options, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, 1, '{}', ?, ?)`,
-      [
-        id,
-        input.name,
-        input.connection_type,
-        input.target,
-        input.width_mm ?? 80,
-        input.is_default ? 1 : 0,
-        timestamp,
-        timestamp,
-      ]
-    );
-    const rows = await this.bridge.db.query<PrinterProfile>('SELECT * FROM printer_profiles WHERE id = ?', [id]);
-    return rows[0];
-  }
-
-  async deleteProfile(id: string): Promise<void> {
-    await this.bridge.db.execute('DELETE FROM printer_profiles WHERE id = ?', [id]);
-  }
-
-  async getDefaultProfile(): Promise<PrinterProfile | null> {
-    const rows = await this.bridge.db.query<PrinterProfile>(
-      'SELECT * FROM printer_profiles WHERE enabled = 1 ORDER BY is_default DESC LIMIT 1'
-    );
-    return rows[0] ?? null;
-  }
-
   // ---- jobs ----
 
-  /** Send bytes to a specific profile (or the default one). */
-  async print(profileId: string | undefined, docType: string, bytes: Uint8Array, meta?: Record<string, unknown>): Promise<PrintJob> {
-    const profile = profileId
-      ? (await this.bridge.db.query<PrinterProfile>('SELECT * FROM printer_profiles WHERE id = ?', [profileId]))[0]
-      : await this.getDefaultProfile();
+  /** Send bytes to a hardware device (hardware_devices row), handling serial vs network/driver. */
+  async printToDevice(deviceId: string, docType: string, bytes: Uint8Array, meta?: Record<string, unknown>): Promise<PrintJob> {
+    const device = await this.bridge.db.query<{ id: string; connection_type: string; connection_config: string }>(
+      'SELECT * FROM hardware_devices WHERE id = ?',
+      [deviceId]
+    );
+    if (!device[0]) throw new Error('Hardware device not found');
 
-    if (!profile) throw new Error('No printer profile configured');
-
-    const jobId = await this.enqueue(profile.id, docType, bytes, meta);
+    const connection = PrinterAdapter.resolveConnection(device[0].connection_type, device[0].connection_config);
+    const jobId = await this.enqueue(deviceId, docType, bytes, meta);
     try {
-      await this.bridge.print.raw(profile.target, bytes);
+      await dispatchBytes(this.bridge, bytes, connection);
       await this.bridge.db.execute("UPDATE print_queue SET status = 'done', printed_at = ?, last_error = NULL WHERE id = ?", [
         now(),
         jobId,
@@ -115,16 +84,6 @@ export class PrintService {
       throw err;
     }
     return this.getJob(jobId);
-  }
-
-  async testPrint(profileId?: string): Promise<PrintJob> {
-    const profile = profileId
-      ? (await this.bridge.db.query<PrinterProfile>('SELECT * FROM printer_profiles WHERE id = ?', [profileId]))[0]
-      : await this.getDefaultProfile();
-    if (!profile) throw new Error('No printer profile configured');
-
-    const { buildTestPage } = await import('./escpos');
-    return this.print(profile.id, 'test_page', buildTestPage(profile.name, profile.width_mm));
   }
 
   async listJobs(limit = 50): Promise<PrintJob[]> {

@@ -2,6 +2,17 @@
 // (scale, scanner, terminal, display…) and the framework gives them a
 // consistent registration + lookup surface.
 
+export type {
+  HardwareDevice,
+  HardwareDeviceType,
+  HardwareConnectionType,
+  HardwareDeviceStatus,
+  HardwareDeviceConfig,
+  HardwareProtocolType,
+  HardwareTemplate,
+  HardwareTemplateType,
+} from '@/types';
+
 export interface HardwareProtocol {
   code: string;
   name: string;

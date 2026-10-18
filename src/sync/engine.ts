@@ -1,14 +1,18 @@
 'use client';
 
-// Sync engine: drains the outbox (push) and runs inbound pulls from
-// sync_definitions rows. Entity-agnostic — apps map entities via
-// sync_definitions.config and registerApplier().
+// Sync engine: activation + connection management for the WEHA ERP, plus the
+// primary sync loop. As of the integration adoption, the loop delegates to the
+// per-entity model (src/integration/per-entity-engine) — entities are configured
+// in integration_entities + integration_field_maps and registered via
+// registerIntegrationEntity(). The legacy outbox drain is kept behind
+// `useLegacyOutbox` for apps that still enqueue changes directly.
 
 import type { DeviceBridge } from '@/platform';
 import { DeviceClient } from './device-client';
 import { getOutboxStats, getPendingItems, markOutboxStatus, type OutboxItem } from './outbox';
 import { getApplier } from './registry';
 import { useSyncStore } from './sync-store';
+import { PerEntitySyncEngine } from '@/integration/per-entity-engine';
 
 export interface SyncEngineConfig {
   baseUrl: string;
@@ -51,6 +55,7 @@ export class SyncEngine {
   private integration: IntegrationRow | null = null;
   private timer: ReturnType<typeof setInterval> | null = null;
   private ticking = false;
+  private perEntity: PerEntitySyncEngine | null = null;
 
   constructor(
     private bridge: DeviceBridge,
@@ -80,6 +85,8 @@ export class SyncEngine {
     const cfg = JSON.parse(this.integration.config) as { baseUrl?: string; tenantSlug?: string; deviceCode?: string };
     this.client = new DeviceClient(cfg.baseUrl || this.config.baseUrl, cfg.tenantSlug ?? '');
     this.client.setToken(this.integration.device_token);
+
+    this.perEntity = new PerEntitySyncEngine(this.bridge, { pollIntervalMs: this.config.pollIntervalMs });
 
     useSyncStore.getState().set({
       activated: !!this.integration.device_token,
@@ -151,12 +158,21 @@ export class SyncEngine {
 
   start(): void {
     if (this.timer) return;
+    // Primary loop: the per-entity engine (honors per-entity schedules).
+    this.perEntity?.start();
+    // Legacy outbox drain (event-driven pushes via enqueueSync) runs alongside.
     this.timer = setInterval(() => void this.tick(), this.config.pollIntervalMs);
   }
 
   stop(): void {
+    this.perEntity?.stop();
     if (this.timer) clearInterval(this.timer);
     this.timer = null;
+  }
+
+  /** Access the per-entity engine (e.g. for a settings "sync now"). */
+  get perEntityEngine(): PerEntitySyncEngine | null {
+    return this.perEntity;
   }
 
   private async loadDefinitions(direction: string): Promise<DefinitionRow[]> {
@@ -205,53 +221,18 @@ export class SyncEngine {
     store.set({ running: true });
 
     try {
-      // Push: drain the outbox
-      const outboundDefs = await this.loadDefinitions('outbound');
-      const items = await getPendingItems(this.bridge);
-      for (const item of items) {
-        const def = outboundDefs.find((d) => d.entity_type === item.entity_type);
-        if (!def) {
-          await markOutboxStatus(this.bridge, item.id, 'failed', `No outbound sync definition for ${item.entity_type}`);
-          continue;
-        }
-        await markOutboxStatus(this.bridge, item.id, 'processing');
-        try {
-          await this.push(item, def);
-          await markOutboxStatus(this.bridge, item.id, 'done');
-          await this.logSync('outbound', item.entity_type, 'success', `${item.action} ${item.entity_id}`);
-        } catch (err) {
-          const message = err instanceof Error ? err.message : String(err);
-          await markOutboxStatus(this.bridge, item.id, 'failed', message);
-          await this.logSync('outbound', item.entity_type, 'error', message);
-        }
+      // Primary: per-entity sync (field-mapped pull/push against integration_entities).
+      if (this.perEntity) {
+        await this.perEntity.runNow();
       }
 
-      // Pull: inbound definitions applied via registered appliers
-      const inboundDefs = await this.loadDefinitions('inbound');
-      for (const def of inboundDefs) {
-        const applier = getApplier(def.entity_type);
-        if (!applier) continue;
-        const cfg = JSON.parse(def.config) as { configCode?: string; params?: Record<string, unknown> };
-        try {
-          const res = await this.client.get(def.entity_type.toUpperCase(), cfg.params);
-          await applier(this.bridge, (res.data?.items ?? []) as Record<string, unknown>[]);
-          await this.bridge.db.execute('UPDATE sync_definitions SET last_synced_at = ?, updated_at = ? WHERE id = ?', [
-            now(),
-            now(),
-            def.id,
-          ]);
-          await this.logSync('inbound', def.entity_type, 'success', `pulled ${(res.data?.items ?? []).length} items`);
-        } catch (err) {
-          const message = err instanceof Error ? err.message : String(err);
-          await this.logSync('inbound', def.entity_type, 'error', message);
-        }
-      }
+      // Event-driven outbox drain (enqueueSync → push). Independent of per-entity.
+      await this.legacyOutboxTick();
 
       const deviceCode = useSyncStore.getState().deviceCode;
       if (deviceCode) void this.client.heartbeat(deviceCode);
 
-      const stats = await getOutboxStats(this.bridge);
-      store.set({ stats, lastRunAt: now(), running: false, erpReachable: true, lastError: null });
+      store.set({ lastRunAt: now(), running: false, erpReachable: true, lastError: null });
     } catch (err) {
       store.set({
         running: false,
@@ -261,5 +242,55 @@ export class SyncEngine {
     } finally {
       this.ticking = false;
     }
+  }
+
+  private async legacyOutboxTick(): Promise<void> {
+    if (!this.client) throw new Error('Not activated');
+    const store = useSyncStore.getState();
+
+    // Push: drain the outbox
+    const outboundDefs = await this.loadDefinitions('outbound');
+    const items = await getPendingItems(this.bridge);
+    for (const item of items) {
+      const def = outboundDefs.find((d) => d.entity_type === item.entity_type);
+      if (!def) {
+        await markOutboxStatus(this.bridge, item.id, 'failed', `No outbound sync definition for ${item.entity_type}`);
+        continue;
+      }
+      await markOutboxStatus(this.bridge, item.id, 'processing');
+      try {
+        await this.push(item, def);
+        await markOutboxStatus(this.bridge, item.id, 'done');
+        await this.logSync('outbound', item.entity_type, 'success', `${item.action} ${item.entity_id}`);
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        await markOutboxStatus(this.bridge, item.id, 'failed', message);
+        await this.logSync('outbound', item.entity_type, 'error', message);
+      }
+    }
+
+    // Pull: inbound definitions applied via registered appliers
+    const inboundDefs = await this.loadDefinitions('inbound');
+    for (const def of inboundDefs) {
+      const applier = getApplier(def.entity_type);
+      if (!applier) continue;
+      const cfg = JSON.parse(def.config) as { configCode?: string; params?: Record<string, unknown> };
+      try {
+        const res = await this.client.get(def.entity_type.toUpperCase(), cfg.params);
+        await applier(this.bridge, (res.data?.items ?? []) as Record<string, unknown>[]);
+        await this.bridge.db.execute('UPDATE sync_definitions SET last_synced_at = ?, updated_at = ? WHERE id = ?', [
+          now(),
+          now(),
+          def.id,
+        ]);
+        await this.logSync('inbound', def.entity_type, 'success', `pulled ${(res.data?.items ?? []).length} items`);
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        await this.logSync('inbound', def.entity_type, 'error', message);
+      }
+    }
+
+    const stats = await getOutboxStats(this.bridge);
+    store.set({ stats });
   }
 }

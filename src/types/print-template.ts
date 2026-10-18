@@ -1,10 +1,18 @@
-// Phase 26: Receipt & ZPL Label Designer — Template Types
+// Receipt & ZPL label designer — template types.
+// Adopted from ai-pos Phase 26. The framework's canonical PrintJob lives in
+// src/lib/print/index.ts; the template-audit and device-record shapes that
+// ai-pos kept alongside these types are defined in src/types/index.ts.
 
 export type PrintTemplateType = 'receipt' | 'label' | 'ticket' | 'report';
 export type PrintTemplateStatus = 'draft' | 'active' | 'archived';
-export type PrintJobStatus = 'pending' | 'printing' | 'printed' | 'failed' | 'retry';
 export type PrintJobType = 'receipt' | 'label' | 'ticket' | 'report';
-export type ConditionOperator = 'exists' | 'not_exists' | 'equals' | 'not_equals' | 'greater_than' | 'less_than';
+export type ConditionOperator =
+  | 'exists'
+  | 'not_exists'
+  | 'equals'
+  | 'not_equals'
+  | 'greater_than'
+  | 'less_than';
 export type BarcodeType = 'code128' | 'ean13' | 'ean8' | 'upca' | 'upce' | 'code39' | 'itf';
 export type QRCodeErrorCorrection = 'L' | 'M' | 'Q' | 'H';
 export type TextAlign = 'left' | 'center' | 'right';
@@ -12,9 +20,25 @@ export type FontWeight = 'normal' | 'bold';
 export type DividerStyle = 'solid' | 'dashed' | 'dotted';
 export type ImageFitMode = 'contain' | 'cover' | 'fill';
 export type SplitPaymentLayout = 'list' | 'summary';
-export type LabelDataSource = 'product' | 'product_variant' | 'inventory_lot' | 'serial_number' | 'purchase_receipt' | 'warehouse_location';
+export type LabelDataSource =
+  | 'product'
+  | 'product_variant'
+  | 'inventory_lot'
+  | 'serial_number'
+  | 'purchase_receipt'
+  | 'warehouse_location';
 export type ZebraDpi = 203 | 300 | 600;
-export type TemplateAuditAction = 'created' | 'modified' | 'published' | 'archived' | 'assigned' | 'imported' | 'exported' | 'zpl_edited' | 'version_created' | 'rolled_back';
+export type TemplateAuditAction =
+  | 'created'
+  | 'modified'
+  | 'published'
+  | 'archived'
+  | 'assigned'
+  | 'imported'
+  | 'exported'
+  | 'zpl_edited'
+  | 'version_created'
+  | 'rolled_back';
 
 // === Base Element ===
 
@@ -186,6 +210,7 @@ export interface ZplImageElement extends BaseElement {
   type: 'image';
   src?: string;
   variable?: string;
+  gfa?: string;
 }
 
 export interface ZplLineElement extends BaseElement {
@@ -265,6 +290,8 @@ export interface PrintTemplate {
     height_mm: number | null;
     unit: 'mm';
   };
+  dpi?: number;
+  zpl?: string;
   elements: (ReceiptElement | ZplElement)[];
   conditions?: TemplateCondition[];
   metadata: {
@@ -294,57 +321,6 @@ export interface ZebraPrinterProfile {
   port?: number;
   port_path?: string;
   model?: string;
-}
-
-// === Database Models ===
-
-export interface PrintTemplateRecord {
-  id: string;
-  name: string;
-  type: PrintTemplateType;
-  device_type: string;
-  content: string;
-  variables: string;
-  paper_width: number;
-  paper_height: number | null;
-  is_default: number;
-  is_active: number;
-  schema_version: string;
-  template_json: string | null;
-  assigned_printer_id: string | null;
-  assigned_pos_id: string | null;
-  version: number;
-  status: PrintTemplateStatus;
-  created_by: string | null;
-  publish_date: string | null;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface PrintJob {
-  id: string;
-  uuid: string;
-  template_id: string | null;
-  printer_id: string | null;
-  job_type: PrintJobType;
-  rendered_content: string | null;
-  raw_template: string | null;
-  data_context: string | null;
-  status: PrintJobStatus;
-  attempt_count: number;
-  max_attempts: number;
-  error_message: string | null;
-  printed_at: string | null;
-  created_at: string;
-}
-
-export interface TemplateAuditLog {
-  id: string;
-  template_id: string;
-  action: TemplateAuditAction;
-  details: string | null;
-  performed_by: string | null;
-  created_at: string;
 }
 
 // === Dynamic Fields ===

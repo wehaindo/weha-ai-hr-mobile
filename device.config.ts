@@ -33,8 +33,21 @@ const deviceConfig = {
   modules: {
     sync: true,
     print: true,
-    hardware: false,
+    hardware: true,
     onScreenKeyboard: true,
+    integration: true,
+    datahub: true,
+    ecr: true,
+    realtime: true,
+    cloud: true,
+    google: true,
+    grist: true,
+    supabase: true,
+    security: true,
+    backup: true,
+    retention: true,
+    aiVoice: true,
+    testing: true,
   },
 };
 

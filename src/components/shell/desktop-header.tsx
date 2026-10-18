@@ -14,7 +14,9 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import UserAvatar from '@/auth/components/UserAvatar';
+import { SidebarTrigger } from '@/components/ui/sidebar';
 import ThemeToggle from './theme-toggle';
+import DisplayToggles from './display-toggles';
 import WindowControls from './window-controls';
 import SyncIndicator from './sync-indicator';
 
@@ -53,6 +55,7 @@ export default function DesktopHeader({ title }: { title?: string }) {
 
   return (
     <header className="flex h-14 shrink-0 items-center gap-2 border-b bg-background px-4">
+      <SidebarTrigger />
       <div className="min-w-0 flex-1">
         <h1 className="truncate text-sm font-semibold" data-testid="page-title">
           {title ?? ''}
@@ -60,6 +63,7 @@ export default function DesktopHeader({ title }: { title?: string }) {
       </div>
       <SyncIndicator />
       <ThemeToggle />
+      <DisplayToggles />
       {user && <UserMenu user={user} />}
       <WindowControls />
     </header>

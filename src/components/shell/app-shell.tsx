@@ -1,10 +1,11 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { findNavItem, isFullscreenRoute, isPublicRoute, routePermission } from '@/app/nav.config';
 import { useAuthStore } from '@/stores/auth';
 import deviceConfig from '@/device.config';
+import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar';
 import AppSidebar from './app-sidebar';
 import DesktopHeader from './desktop-header';
 import TouchKeyboard from './touch-keyboard-gate';
@@ -14,6 +15,13 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const can = useAuthStore((s) => s.can);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+
+  // Restore collapsed state persisted by SidebarProvider (sidebar_state cookie).
+  useEffect(() => {
+    const match = document.cookie.match(/(?:^|;\s*)sidebar_state=([^;]+)/);
+    if (match) setSidebarOpen(match[1] === 'true');
+  }, []);
 
   const isPublic = isPublicRoute(pathname);
   const permission = routePermission(pathname);
@@ -55,15 +63,15 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const navItem = findNavItem(pathname);
 
   return (
-    <div className="flex h-screen overflow-hidden">
+    <SidebarProvider open={sidebarOpen} onOpenChange={setSidebarOpen} className="h-screen overflow-hidden">
       <AppSidebar />
-      <div className="flex flex-1 flex-col overflow-hidden">
+      <SidebarInset>
         <DesktopHeader title={navItem?.label} />
-        <main className="flex-1 overflow-auto bg-muted/30 p-6" data-testid="main-content">
+        <div className="flex-1 overflow-auto bg-muted/30 p-6" data-testid="main-content">
           {children}
-        </main>
-      </div>
+        </div>
+      </SidebarInset>
       {deviceConfig.modules.onScreenKeyboard && <TouchKeyboard />}
-    </div>
+    </SidebarProvider>
   );
 }

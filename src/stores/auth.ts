@@ -16,10 +16,14 @@ interface AuthStore {
   isAuthenticated: boolean;
   loginAttempts: number;
   lockedUntil: number | null;
+  /** Configurable lockout policy (driven by security settings; defaults below). */
+  maxAttempts: number;
+  lockoutMs: number;
 
   login: (user: SessionUser) => void;
   logout: () => void;
   setPermissions: (permissions: string[]) => void;
+  configureLockout: (maxAttempts: number, lockoutMs: number) => void;
   incrementAttempts: () => void;
   resetAttempts: () => void;
   isLocked: () => boolean;
@@ -36,6 +40,8 @@ export const useAuthStore = create<AuthStore>()(
       isAuthenticated: false,
       loginAttempts: 0,
       lockedUntil: null,
+      maxAttempts: MAX_LOGIN_ATTEMPTS,
+      lockoutMs: LOCKOUT_MS,
 
       login: (user) => {
         set({
@@ -59,13 +65,17 @@ export const useAuthStore = create<AuthStore>()(
         set({ user: { ...user, permissions } });
       },
 
+      configureLockout: (maxAttempts, lockoutMs) => {
+        set({ maxAttempts: Math.max(1, maxAttempts), lockoutMs: Math.max(1000, lockoutMs) });
+      },
+
       incrementAttempts: () => {
-        const { loginAttempts } = get();
+        const { loginAttempts, maxAttempts, lockoutMs } = get();
         const newAttempts = loginAttempts + 1;
-        if (newAttempts >= MAX_LOGIN_ATTEMPTS) {
+        if (newAttempts >= maxAttempts) {
           set({
             loginAttempts: newAttempts,
-            lockedUntil: Date.now() + LOCKOUT_MS,
+            lockedUntil: Date.now() + lockoutMs,
           });
         } else {
           set({ loginAttempts: newAttempts });

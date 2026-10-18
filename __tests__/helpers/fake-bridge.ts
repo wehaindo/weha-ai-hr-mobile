@@ -75,6 +75,71 @@ export async function createFakeBridge(): Promise<FakeBridgeHandle> {
       },
     },
 
+    hardware: {
+      openDrawer: async () => {
+        throw new Error('hardware not available in tests');
+      },
+      serial: async () => {
+        throw new Error('hardware not available in tests');
+      },
+      discover: async () => [],
+      test: async () => ({ ok: false, message: 'hardware not available in tests' }),
+      exchange: async () => {
+        throw new Error('hardware not available in tests');
+      },
+    },
+
+    realtime: {
+      async connect() {
+        /* no-op in tests */
+      },
+      async disconnect() {
+        /* no-op in tests */
+      },
+      async sendEvent() {
+        /* no-op in tests */
+      },
+      async sendHeartbeat() {
+        /* no-op in tests */
+      },
+      async setStatus() {
+        /* no-op in tests */
+      },
+      async getStatus() {
+        return { isConnected: false, status: 'offline' as const, posId: null };
+      },
+    },
+
+    cloud: {
+      async request() {
+        throw new Error('cloud not available in tests');
+      },
+      async googleOAuth() {
+        throw new Error('cloud not available in tests');
+      },
+    },
+
+    backup: {
+      async saveToFile() {
+        throw new Error('backup not available in tests');
+      },
+      async openFile() {
+        throw new Error('backup not available in tests');
+      },
+    },
+
+    display: {
+      async open() {
+        /* no-op in tests */
+      },
+      async close() {
+        /* no-op in tests */
+      },
+      async isOpen() {
+        return false;
+      },
+    },
+
     events: {
       on<K extends keyof DeviceBridgeEventMap>(event: K, listener: DeviceBridgeEventMap[K]) {
         if (!listeners.has(event)) listeners.set(event, new Set());

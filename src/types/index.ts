@@ -7,6 +7,7 @@ export type HardwareDeviceType =
   | 'cash_drawer'
   | 'scanner'
   | 'terminal'
+  | 'payment_terminal'
   | 'customer_display'
   | 'kds_display'
   | 'other';
@@ -80,4 +81,9 @@ export interface HardwareTemplate {
   created_at: string;
   updated_at: string;
   schema_version?: string;
+  /** Canonical designer JSON (schema_version 1.0). Preferred over `content`. */
+  template_json?: string | null;
+  /** Device (printer) this template is pinned to; falls back to defaults. */
+  assigned_printer_id?: string | null;
+  version?: number;
 }

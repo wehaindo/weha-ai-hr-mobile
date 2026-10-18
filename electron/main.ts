@@ -8,6 +8,11 @@ import { registerDbIpc } from './ipc/db';
 import { registerKvIpc } from './ipc/kv';
 import { registerAppIpc } from './ipc/app';
 import { registerPrintIpc } from './ipc/print';
+import { registerHardwareIpc } from './ipc/hardware';
+import { registerRealtimeIpc } from './ipc/realtime';
+import { registerCloudIpc } from './ipc/cloud';
+import { registerBackupIpc } from './ipc/backup';
+import { registerDisplayIpc } from './ipc/display';
 import { registerRealtime } from './services/realtime';
 
 // Must run before app is ready.
@@ -34,6 +39,11 @@ if (!gotLock) {
     registerKvIpc(() => engine);
     registerAppIpc();
     registerPrintIpc();
+    registerHardwareIpc();
+    registerRealtimeIpc();
+    registerCloudIpc();
+    registerBackupIpc();
+    registerDisplayIpc();
     registerRealtime();
 
     createMainWindow();

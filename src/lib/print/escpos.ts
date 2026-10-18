@@ -30,7 +30,7 @@ export class EscPosBuilder {
   }
 
   text(line: string): this {
-    for (const byte of Buffer.from(line, 'utf8')) {
+    for (const byte of new TextEncoder().encode(line)) {
       this.bytes.push(byte);
     }
     this.bytes.push(LF);

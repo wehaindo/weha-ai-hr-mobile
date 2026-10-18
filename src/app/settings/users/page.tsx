@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useBridge } from '@/platform';
 import { useAuthStore } from '@/stores/auth';
-import { hashPin, isValidPin, PIN_MAX_LENGTH } from '@/auth/crypto';
+import { hashPin, hashPassword, isValidPin, PIN_MAX_LENGTH } from '@/auth/crypto';
 import { generateId } from '@/lib/id';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -31,6 +31,7 @@ import { toast } from '@/components/ui/toast';
 interface UserRow {
   id: string;
   display_name: string;
+  username: string | null;
   role: string;
   avatar_color: string | null;
   is_active: number;
@@ -46,13 +47,25 @@ interface RoleRow {
 interface UserFormState {
   id?: string;
   displayName: string;
+  username: string;
+  password: string;
+  passwordConfirm: string;
   role: string;
   pin: string;
   pinConfirm: string;
   active: boolean;
 }
 
-const EMPTY_FORM: UserFormState = { displayName: '', role: 'operator', pin: '', pinConfirm: '', active: true };
+const EMPTY_FORM: UserFormState = {
+  displayName: '',
+  username: '',
+  password: '',
+  passwordConfirm: '',
+  role: 'operator',
+  pin: '',
+  pinConfirm: '',
+  active: true,
+};
 
 export default function UsersSettingsPage() {
   const bridge = useBridge();
@@ -65,7 +78,7 @@ export default function UsersSettingsPage() {
   const load = useCallback(async () => {
     const [userRows, roleRows] = await Promise.all([
       bridge.db.query<UserRow>(
-        'SELECT id, display_name, role, avatar_color, is_active, last_login_at FROM users ORDER BY display_name'
+        'SELECT id, display_name, username, role, avatar_color, is_active, last_login_at FROM users ORDER BY display_name'
       ),
       bridge.db.query<RoleRow>('SELECT id, name, is_system FROM roles ORDER BY id'),
     ]);
@@ -97,26 +110,38 @@ export default function UsersSettingsPage() {
       return;
     }
 
+    if (form.password && form.password !== form.passwordConfirm) {
+      toast.add({ title: 'Passwords do not match', type: 'error' });
+      return;
+    }
+
     setBusy(true);
     try {
       const now = new Date().toISOString();
+      const username = form.username.trim() || null;
+      const passwordHash = form.password ? await hashPassword(form.password) : null;
       if (form.id) {
         await bridge.db.execute(
-          'UPDATE users SET display_name = ?, role = ?, is_active = ?, updated_at = ? WHERE id = ?',
-          [form.displayName.trim(), form.role, form.active ? 1 : 0, now, form.id]
+          'UPDATE users SET display_name = ?, username = ?, role = ?, is_active = ?, updated_at = ? WHERE id = ?',
+          [form.displayName.trim(), username, form.role, form.active ? 1 : 0, now, form.id]
         );
         if (form.pin) {
           await bridge.db.execute('UPDATE users SET pin_hash = ? WHERE id = ?', [await hashPin(form.pin), form.id]);
         }
+        if (passwordHash) {
+          await bridge.db.execute('UPDATE users SET password_hash = ? WHERE id = ?', [passwordHash, form.id]);
+        }
         toast.add({ title: 'User updated', type: 'success' });
       } else {
         await bridge.db.execute(
-          `INSERT INTO users (id, display_name, pin_hash, role, avatar_color, is_active, created_at, updated_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+          `INSERT INTO users (id, display_name, username, pin_hash, password_hash, role, avatar_color, is_active, created_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           [
             generateId(),
             form.displayName.trim(),
+            username,
             await hashPin(form.pin),
+            passwordHash,
             form.role,
             'oklch(0.769 0.188 70.08)',
             form.active ? 1 : 0,
@@ -170,6 +195,7 @@ export default function UsersSettingsPage() {
             <TableHeader>
               <TableRow>
                 <TableHead>Name</TableHead>
+                <TableHead>Username</TableHead>
                 <TableHead>Role</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Last sign-in</TableHead>
@@ -187,6 +213,7 @@ export default function UsersSettingsPage() {
                       </Badge>
                     )}
                   </TableCell>
+                  <TableCell className="font-mono text-xs text-muted-foreground">{user.username ?? '—'}</TableCell>
                   <TableCell className="capitalize">{user.role}</TableCell>
                   <TableCell>
                     {user.is_active ? (
@@ -208,6 +235,9 @@ export default function UsersSettingsPage() {
                           setForm({
                             id: user.id,
                             displayName: user.display_name,
+                            username: user.username ?? '',
+                            password: '',
+                            passwordConfirm: '',
                             role: user.role,
                             pin: '',
                             pinConfirm: '',
@@ -267,6 +297,40 @@ export default function UsersSettingsPage() {
                   value={form.displayName}
                   onChange={(e) => setForm({ ...form, displayName: e.target.value })}
                 />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="user-username">Username (optional)</Label>
+                <Input
+                  id="user-username"
+                  data-testid="user-username-input"
+                  autoComplete="off"
+                  value={form.username}
+                  onChange={(e) => setForm({ ...form, username: e.target.value })}
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label htmlFor="user-password">{form.id ? 'New password (optional)' : 'Password (optional)'}</Label>
+                  <Input
+                    id="user-password"
+                    type="password"
+                    autoComplete="new-password"
+                    data-testid="user-password-input"
+                    value={form.password}
+                    onChange={(e) => setForm({ ...form, password: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="user-password-confirm">Confirm password</Label>
+                  <Input
+                    id="user-password-confirm"
+                    type="password"
+                    autoComplete="new-password"
+                    data-testid="user-password-confirm-input"
+                    value={form.passwordConfirm}
+                    onChange={(e) => setForm({ ...form, passwordConfirm: e.target.value })}
+                  />
+                </div>
               </div>
               <div className="space-y-2">
                 <Label>Role</Label>

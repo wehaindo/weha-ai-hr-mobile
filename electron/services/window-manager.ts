@@ -16,6 +16,9 @@ export interface SecondaryWindowOptions {
 
 let mainWindow: BrowserWindow | null = null;
 
+/** Open display windows tracked by display id (for the navbar display toggles). */
+const displayWindows = new Map<string, BrowserWindow>();
+
 function windowUrl(route: string): string {
   const normalized = route.startsWith('/') ? route : `/${route}`;
   if (isDev) return `http://localhost:${deviceConfig.port}${normalized}`;
@@ -74,6 +77,34 @@ export function getMainWindow(): BrowserWindow | null {
 
 export function openSecondaryWindow(route: string, options: SecondaryWindowOptions = {}): void {
   createWindow(route, options);
+}
+
+/**
+ * Open a display window (fullscreen on an external display) tracked by id.
+ * Reuses createWindow; focuses the existing window if already open.
+ */
+export function openDisplay(id: string, href: string): void {
+  const existing = displayWindows.get(id);
+  if (existing && !existing.isDestroyed()) {
+    existing.focus();
+    return;
+  }
+  const win = createWindow(href, { fullscreen: true, frame: false });
+  displayWindows.set(id, win);
+  win.on('closed', () => displayWindows.delete(id));
+}
+
+/** Close the display window for an id (no-op if not open). */
+export function closeDisplay(id: string): void {
+  const win = displayWindows.get(id);
+  if (win && !win.isDestroyed()) win.close();
+  displayWindows.delete(id);
+}
+
+/** Whether the display window for an id is open. */
+export function isDisplayOpen(id: string): boolean {
+  const win = displayWindows.get(id);
+  return !!win && !win.isDestroyed();
 }
 
 /** Broadcast an event to every open window (renderer bridge `events.on`). */

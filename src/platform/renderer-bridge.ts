@@ -5,7 +5,18 @@ import { createEngine, type DatabaseEngine } from '../db/engine';
 import { IndexedDbBlobStore } from '../db/persistence';
 import { runMigrations } from '../db/migrate';
 import { frameworkMigrations } from '../db/migrations';
-import type { AppInfo, DeviceBridge, DeviceBridgeEventMap, PlatformKind } from './bridge';
+import { RealtimeClient, type RealtimeSocket } from '../integration/realtime/realtime-client';
+import { createRendererDisplay } from './renderer-display';
+import type {
+  AppInfo,
+  CloudRequest,
+  CloudResponse,
+  DeviceBridge,
+  DeviceBridgeEventMap,
+  PlatformKind,
+  RealtimeConnectOptions,
+  RealtimeStatusResult,
+} from './bridge';
 
 type Listener = (...args: never[]) => void;
 
@@ -23,6 +34,59 @@ class Emitter {
       (listener as (p: unknown) => void)(payload);
     }
   }
+}
+
+/** Wrap a browser WebSocket in the RealtimeSocket shape the portable client drives. */
+function browserSocket(url: string): RealtimeSocket {
+  const ws = new WebSocket(url);
+  return {
+    send: (data) => ws.send(data),
+    close: (code) => ws.close(code),
+    onOpen: (cb) => ws.addEventListener('open', () => cb()),
+    onMessage: (cb) => ws.addEventListener('message', (e) => cb(String(e.data))),
+    onClose: (cb) => ws.addEventListener('close', () => cb()),
+    onError: (cb) => ws.addEventListener('error', () => cb(new Error('WebSocket error'))),
+  };
+}
+
+/**
+ * Renderer realtime capability (web/Capacitor): the portable client over a
+ * browser WebSocket, emitting status/commands on the local bridge emitter.
+ */
+function createRendererRealtime(emitter: Emitter): DeviceBridge['realtime'] {
+  let client: RealtimeClient | null = null;
+
+  const ensureClient = (): RealtimeClient => {
+    if (!client) {
+      client = new RealtimeClient({
+        socketFactory: browserSocket,
+        onStatus: (status, error) => emitter.emit('realtime:status', { status, error }),
+        onCommand: (command, payload) => emitter.emit('realtime:command', { command, payload }),
+      });
+    }
+    return client;
+  };
+
+  return {
+    async connect(options: RealtimeConnectOptions): Promise<void> {
+      ensureClient().connect(options.url, options.identity);
+    },
+    async disconnect(): Promise<void> {
+      client?.disconnect();
+    },
+    async sendEvent(eventType, data, severity): Promise<void> {
+      ensureClient().sendEvent(eventType, data, severity);
+    },
+    async sendHeartbeat(status, data): Promise<void> {
+      ensureClient().sendHeartbeat(status, data);
+    },
+    async setStatus(status): Promise<void> {
+      ensureClient().setStatus(status as never);
+    },
+    async getStatus(): Promise<RealtimeStatusResult> {
+      return ensureClient().getStatus();
+    },
+  };
 }
 
 export async function createRendererBridge(platform: PlatformKind): Promise<DeviceBridge> {
@@ -113,9 +177,94 @@ export async function createRendererBridge(platform: PlatformKind): Promise<Devi
       },
     },
 
+    display: createRendererDisplay(),
+
     print: {
       async raw(): Promise<void> {
         throw new Error('Raw printing requires Electron (use the print pipeline with a network printer adapter)');
+      },
+    },
+
+    hardware: {
+      async openDrawer(): Promise<void> {
+        throw new Error('Cash drawer requires Electron (no raw device I/O on web/Capacitor)');
+      },
+      async serial(): Promise<void> {
+        throw new Error('Serial I/O requires Electron');
+      },
+      async discover() {
+        // No device enumeration in the browser.
+        return [];
+      },
+      async test() {
+        return { ok: false, message: 'Hardware test requires Electron' };
+      },
+      async exchange(): Promise<Uint8Array> {
+        throw new Error('Device exchange requires Electron (no serial/TCP request-response on web/Capacitor)');
+      },
+    },
+
+    realtime: createRendererRealtime(emitter),
+
+    cloud: {
+      async request(req: CloudRequest): Promise<CloudResponse> {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), req.timeoutMs ?? 30000);
+        try {
+          const init: RequestInit = {
+            method: req.method ?? 'GET',
+            headers: req.headers,
+            signal: controller.signal,
+          };
+          if (req.formData) {
+            // Multipart: let fetch set the boundary (drop any content-type header).
+            const headers = { ...(req.headers ?? {}) };
+            delete headers['Content-Type'];
+            delete headers['content-type'];
+            init.headers = headers;
+            const form = new FormData();
+            for (const part of req.formData) {
+              if (part.bytes) {
+                const buf = new Uint8Array(part.bytes).buffer;
+                form.append(part.name, new Blob([buf], { type: part.contentType ?? 'application/octet-stream' }), part.filename ?? 'file');
+              } else {
+                form.append(part.name, part.value ?? '');
+              }
+            }
+            init.body = form;
+          } else {
+            init.body = req.body;
+          }
+          const res = await fetch(req.url, init);
+          const body = await res.text();
+          const headers: Record<string, string> = {};
+          res.headers.forEach((value, key) => {
+            headers[key.toLowerCase()] = value;
+          });
+          let json: unknown;
+          if ((headers['content-type'] ?? '').includes('json') && body) {
+            try {
+              json = JSON.parse(body);
+            } catch {
+              /* non-JSON */
+            }
+          }
+          return { ok: res.ok, status: res.status, headers, body, json };
+        } finally {
+          clearTimeout(timeout);
+        }
+      },
+      async googleOAuth(): Promise<never> {
+        throw new Error('Google OAuth requires Electron (a backend or native callback is needed on web)');
+      },
+    },
+
+    backup: {
+      async saveToFile(): Promise<never> {
+        throw new Error('Native backup file save requires Electron (use exportJson + download on web)');
+      },
+      async openFile(): Promise<never> {
+        throw new Error('Native backup file open requires Electron (use importJson + upload on web)');
       },
     },
 

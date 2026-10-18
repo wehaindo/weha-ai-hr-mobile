@@ -5,7 +5,20 @@ import { usePathname } from 'next/navigation';
 import { NAV_ITEMS } from '@/app/nav.config';
 import { useAuthStore } from '@/stores/auth';
 import deviceConfig from '@/device.config';
-import { cn } from '@/lib/utils';
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarHeader,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarRail,
+  SidebarSeparator,
+} from '@/components/ui/sidebar';
+import UserAvatar from '@/auth/components/UserAvatar';
 
 export default function AppSidebar() {
   const pathname = usePathname();
@@ -15,47 +28,69 @@ export default function AppSidebar() {
   const items = NAV_ITEMS.filter((item) => !item.permission || can(item.permission));
 
   return (
-    <aside className="flex w-60 shrink-0 flex-col border-r bg-sidebar text-sidebar-foreground">
-      <div className="flex h-14 items-center gap-2 border-b px-4">
-        {deviceConfig.brand.logo ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={deviceConfig.brand.logo} alt="" className="h-7 w-7 rounded" />
-        ) : (
-          <div className="flex h-7 w-7 items-center justify-center rounded bg-primary text-xs font-bold text-primary-foreground">
-            {deviceConfig.brand.sidebarTitle.slice(0, 1)}
-          </div>
-        )}
-        <span className="truncate text-sm font-semibold">{deviceConfig.brand.sidebarTitle}</span>
-      </div>
-
-      <nav className="flex-1 space-y-1 overflow-y-auto p-2" data-testid="sidebar-nav">
-        {items.map((item) => {
-          const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              data-testid={`nav-${item.href}`}
-              className={cn(
-                'flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors',
-                active
-                  ? 'bg-sidebar-primary text-sidebar-primary-foreground'
-                  : 'text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-foreground'
+    <Sidebar collapsible="icon">
+      <SidebarHeader>
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton size="lg" tooltip={deviceConfig.brand.sidebarTitle}>
+              {deviceConfig.brand.logo ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={deviceConfig.brand.logo} alt="" className="size-8 rounded" />
+              ) : (
+                <div className="flex size-8 shrink-0 items-center justify-center rounded bg-primary text-xs font-bold text-primary-foreground">
+                  {deviceConfig.brand.sidebarTitle.slice(0, 1)}
+                </div>
               )}
-            >
-              <item.icon className="size-4 shrink-0" />
-              <span className="truncate">{item.label}</span>
-            </Link>
-          );
-        })}
-      </nav>
+              <span className="truncate text-sm font-semibold">{deviceConfig.brand.sidebarTitle}</span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
+      </SidebarHeader>
+
+      <SidebarContent>
+        <SidebarGroup data-testid="sidebar-nav">
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {items.map((item) => {
+                const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
+                return (
+                  <SidebarMenuItem key={item.href}>
+                    <SidebarMenuButton
+                      render={<Link href={item.href} data-testid={`nav-${item.href}`} />}
+                      isActive={active}
+                      tooltip={item.label}
+                    >
+                      <item.icon className="size-4 shrink-0" />
+                      <span className="truncate">{item.label}</span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                );
+              })}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+      </SidebarContent>
 
       {user && (
-        <div className="border-t px-4 py-3">
-          <p className="truncate text-sm font-medium">{user.display_name}</p>
-          <p className="truncate text-xs capitalize text-muted-foreground">{user.role}</p>
-        </div>
+        <>
+          <SidebarSeparator />
+          <SidebarFooter>
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton size="lg" tooltip={user.display_name}>
+                  <UserAvatar name={user.display_name} avatarColor={user.avatar_color} size="sm" />
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-sm font-medium">{user.display_name}</span>
+                    <span className="block truncate text-xs capitalize text-muted-foreground">{user.role}</span>
+                  </span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            </SidebarMenu>
+          </SidebarFooter>
+        </>
       )}
-    </aside>
+
+      <SidebarRail />
+    </Sidebar>
   );
 }

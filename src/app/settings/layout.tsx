@@ -2,12 +2,25 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { PrinterIcon, SettingsIcon, SparklesIcon, UsersIcon, InfoIcon } from 'lucide-react';
+import { SettingsIcon, SparklesIcon, UsersIcon, InfoIcon, CpuIcon, FileTextIcon, PlugIcon, CloudIcon, RadioIcon, CloudSyncIcon, HomeIcon, LayoutDashboardIcon, ReceiptIcon, ShieldIcon, SaveIcon, MicIcon, ArchiveIcon, FlaskConical } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const TABS = [
+  { href: '/settings/general', label: 'General', icon: HomeIcon },
+  { href: '/settings/display', label: 'Layout', icon: LayoutDashboardIcon },
   { href: '/settings/users', label: 'Users', icon: UsersIcon },
-  { href: '/settings/printers', label: 'Printers', icon: PrinterIcon },
+  { href: '/settings/security', label: 'Security', icon: ShieldIcon },
+  { href: '/settings/hardware', label: 'Hardware', icon: CpuIcon },
+  { href: '/settings/print-templates', label: 'Templates', icon: FileTextIcon },
+  { href: '/settings/receipt', label: 'Receipt', icon: ReceiptIcon },
+  { href: '/settings/integrations', label: 'Integrations', icon: PlugIcon },
+  { href: '/settings/datahub', label: 'Data Hub', icon: CloudIcon },
+  { href: '/settings/testing', label: 'Testing', icon: FlaskConical },
+  { href: '/settings/cloud-sync', label: 'Cloud Sync', icon: CloudSyncIcon },
+  { href: '/settings/ai-voice', label: 'Ai Voice', icon: MicIcon },
+  { href: '/settings/realtime', label: 'Realtime', icon: RadioIcon },
+  { href: '/settings/backup', label: 'Backup', icon: SaveIcon },
+  { href: '/settings/retention', label: 'Data Retention', icon: ArchiveIcon },
   { href: '/settings/appearance', label: 'Appearance', icon: SparklesIcon },
   { href: '/settings/about', label: 'About', icon: InfoIcon },
 ];

@@ -4,7 +4,23 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from '
 import type { DeviceBridge } from './bridge';
 import { createRendererBridge } from './renderer-bridge';
 
-export type { DeviceBridge, DeviceBridgeEventMap, AppInfo, PlatformKind } from './bridge';
+export type {
+  DeviceBridge,
+  DeviceBridgeEventMap,
+  AppInfo,
+  PlatformKind,
+  DiscoveredDevice,
+  SerialTarget,
+  HardwareTestResult,
+  ExchangeOptions,
+  RealtimeStatus,
+  RealtimeIdentity,
+  RealtimeConnectOptions,
+  RealtimeStatusResult,
+  CloudRequest,
+  CloudResponse,
+  OAuthTokenResult,
+} from './bridge';
 
 function isElectronBridge(value: unknown): value is DeviceBridge {
   return !!value && typeof value === 'object' && (value as DeviceBridge).platform === 'electron';

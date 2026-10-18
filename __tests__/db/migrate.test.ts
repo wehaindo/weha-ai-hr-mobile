@@ -41,11 +41,72 @@ describe('runMigrations', () => {
       'audit_log',
       'roles',
       'role_permissions',
-      'printer_profiles',
       'print_queue',
+      'hardware_devices',
+      'hardware_templates',
+      'hardware_logs',
+      'integration_entities',
+      'integration_field_maps',
+      'datahub_configs',
+      'datahub_sync_state',
+      'datahub_entity_map',
+      'ecr_logs',
+      'google_accounts',
+      'google_sheet_configs',
+      'google_sheet_column_maps',
+      'google_sync_jobs',
+      'google_sync_logs',
+      'grist_configs',
+      'grist_column_maps',
+      'grist_sync_jobs',
+      'grist_sync_logs',
+      'supabase_configs',
+      'supabase_column_maps',
+      'supabase_sync_jobs',
+      'supabase_sync_logs',
+      'ai_configs',
+      'ai_voice_logs',
+      'product_aliases',
+      'test_products',
+      'test_orders',
+      'test_order_lines',
+      'test_lookups',
     ]) {
       expect(tables).toContain(expected);
     }
+  });
+
+  it('accepts payment_terminal device type after the ECR migration', async () => {
+    const db = await freshEngine();
+    runMigrations(db, frameworkMigrations);
+
+    const now = new Date().toISOString();
+    db.execute(
+      `INSERT INTO hardware_devices (id, uuid, name, type, connection_type, connection_config, capabilities, status, is_default, is_active, created_at, updated_at)
+       VALUES ('t1', 'u1', 'Terminal', 'payment_terminal', 'network', ?, '{}', 'offline', 0, 1, ?, ?)`,
+      [JSON.stringify({ bank: 'bca', ip: '10.0.0.9', port: 53535 }), now, now]
+    );
+    const rows = db.query<{ type: string }>("SELECT type FROM hardware_devices WHERE id = 't1'");
+    expect(rows[0].type).toBe('payment_terminal');
+  });
+
+  it('grants hardware.manage to admin and manager roles', async () => {
+    const db = await freshEngine();
+    runMigrations(db, frameworkMigrations);
+
+    for (const roleId of ['admin', 'manager']) {
+      const rows = db.query<{ c: number }>(
+        "SELECT COUNT(*) AS c FROM role_permissions WHERE role_id = ? AND permission_id = 'hardware.manage'",
+        [roleId]
+      );
+      expect(rows[0].c).toBe(1);
+    }
+
+    // Operator must not have it.
+    const op = db.query<{ c: number }>(
+      "SELECT COUNT(*) AS c FROM role_permissions WHERE role_id = 'operator' AND permission_id = 'hardware.manage'"
+    );
+    expect(op[0].c).toBe(0);
   });
 
   it('seeds the admin user with permissions and default settings', async () => {

@@ -3,7 +3,14 @@
 import { contextBridge, ipcRenderer } from 'electron';
 import type { WindowOpenOptions } from '../src/platform/bridge';
 
-const EVENT_CHANNELS = new Set(['db:changed', 'command', 'window:state', 'sync:status']);
+const EVENT_CHANNELS = new Set([
+  'db:changed',
+  'command',
+  'window:state',
+  'sync:status',
+  'realtime:status',
+  'realtime:command',
+]);
 
 contextBridge.exposeInMainWorld('deviceBridge', {
   platform: 'electron',
@@ -31,6 +38,49 @@ contextBridge.exposeInMainWorld('deviceBridge', {
 
   print: {
     raw: (target: string, bytes: Uint8Array) => ipcRenderer.invoke('print:raw', { target, bytes }),
+  },
+
+  hardware: {
+    openDrawer: (target: string) => ipcRenderer.invoke('hardware:open-drawer', { target }),
+    serial: (target: { port_path: string; baud_rate?: number }, bytes: Uint8Array) =>
+      ipcRenderer.invoke('hardware:serial', { target, bytes }),
+    discover: () => ipcRenderer.invoke('hardware:discover'),
+    test: (target: string) => ipcRenderer.invoke('hardware:test', target),
+    exchange: async (
+      target: { port_path?: string; baud_rate?: number; ip?: string; port?: number },
+      bytes: Uint8Array,
+      options?: { timeoutMs?: number }
+    ) => {
+      const result = await ipcRenderer.invoke('hardware:exchange', { target, bytes, timeoutMs: options?.timeoutMs });
+      return Uint8Array.from(result as number[]);
+    },
+  },
+
+  realtime: {
+    connect: (options: { url: string; identity: unknown }) => ipcRenderer.invoke('realtime:connect', options),
+    disconnect: () => ipcRenderer.invoke('realtime:disconnect'),
+    sendEvent: (eventType: string, data: unknown, severity?: string) =>
+      ipcRenderer.invoke('realtime:send-event', { eventType, data, severity }),
+    sendHeartbeat: (status?: string, data?: unknown) => ipcRenderer.invoke('realtime:send-heartbeat', { status, data }),
+    setStatus: (status: string) => ipcRenderer.invoke('realtime:set-status', { status }),
+    getStatus: () => ipcRenderer.invoke('realtime:get-status'),
+  },
+
+  cloud: {
+    request: (req: unknown) => ipcRenderer.invoke('cloud:request', req),
+    googleOAuth: (authorizeUrl: string, options?: { port?: number; timeoutMs?: number; clientId?: string; clientSecret?: string }) =>
+      ipcRenderer.invoke('cloud:google-oauth', { authorizeUrl, ...options }),
+  },
+
+  backup: {
+    saveToFile: () => ipcRenderer.invoke('backup:save-to-file'),
+    openFile: () => ipcRenderer.invoke('backup:open-file'),
+  },
+
+  display: {
+    open: (id: string, href: string) => ipcRenderer.invoke('display:open', { id, href }),
+    close: (id: string) => ipcRenderer.invoke('display:close', id),
+    isOpen: (id: string) => ipcRenderer.invoke('display:is-open', id),
   },
 
   events: {

@@ -1,7 +1,7 @@
 'use client';
 
 import type { DeviceBridge } from '@/platform';
-import { verifyPin } from './crypto';
+import { verifyPin, verifyPassword } from './crypto';
 import type { SessionUser } from '@/stores/auth';
 
 export interface LoginUser {
@@ -15,6 +15,8 @@ interface UserRow {
   id: string;
   display_name: string;
   pin_hash: string;
+  username?: string | null;
+  password_hash?: string | null;
   role: string;
   avatar_color: string | null;
   is_active: number;
@@ -63,6 +65,44 @@ export async function authenticate(
   await bridge.db.execute('UPDATE users SET last_login_at = ? WHERE id = ?', [
     new Date().toISOString(),
     userId,
+  ]);
+
+  const permissions = await fetchPermissions(bridge, user.role);
+  return {
+    id: user.id,
+    display_name: user.display_name,
+    role: user.role,
+    avatar_color: user.avatar_color ?? undefined,
+    permissions,
+  };
+}
+
+/** Sign in with a username + password (optional alternative to PIN login). */
+export async function authenticateWithCredentials(
+  bridge: DeviceBridge,
+  username: string,
+  password: string
+): Promise<SessionUser> {
+  const rows = await bridge.db.query<UserRow>(
+    'SELECT id, display_name, role, avatar_color, password_hash, is_active FROM users WHERE username = ?',
+    [username]
+  );
+  const user = rows[0];
+  if (!user || user.is_active !== 1) {
+    throw new Error('Unknown username');
+  }
+  if (!user.password_hash) {
+    throw new Error('No password set for this user');
+  }
+
+  const valid = await verifyPassword(password, user.password_hash);
+  if (!valid) {
+    throw new Error('Incorrect password');
+  }
+
+  await bridge.db.execute('UPDATE users SET last_login_at = ? WHERE id = ?', [
+    new Date().toISOString(),
+    user.id,
   ]);
 
   const permissions = await fetchPermissions(bridge, user.role);
