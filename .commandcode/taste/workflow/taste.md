@@ -1,0 +1,8 @@
+# Workflow
+
+- Works with multiple sibling repos under `D:\NextjsProjects` (e.g., `weha-device-framework`, `ai-realtime`) and expects the agent to locate and read related projects by absolute path when a task spans them. Confidence: 0.7
+- Expects cross-project integration work to be verified end-to-end before finishing: typecheck (`tsc --noEmit`), lint, the full test suite, and the production build (`next build` static export) all run clean as the completion bar. Confidence: 0.8
+- For a change spanning sibling repos, sweeps every occurrence across BOTH repos before finishing and verifies with a grep for the old value to confirm zero stragglers remain. Confidence: 0.8
+- Writes requests in informal, non-native English with frequent typos/fragmented phrasing and loose punctuation (e.g., "when please check how ... if not have yet please fix"). See `communication/taste.md`. Confidence: 0.6
+- Expects new integration/capability work to ship with all layers, not a bare wiring: unit tests using a fake/mock transport, a settings surface, and a `docs/*.md` setup guide covering the external-service side. Confidence: 0.7
+- Expects one-off diagnostic/exploration scripts that prove something works to be promoted into permanent, reusable scripts in the repo (env-var driven, usage-header commented, placed under `scripts/`) rather than left in the scratchpad — mirrors the broader "concrete drop-in reference" preference. Confidence: 0.7

@@ -12,7 +12,7 @@ Built from the production-hardened ai-pos codebase, stripped of POS domain logic
 
 ```bash
 npm install
-npm run dev            # web on http://localhost:3000
+npm run dev            # web on http://localhost:3180
 ```
 
 Sign in with the seeded admin (PIN **1234**), then change it in Settings → Users.

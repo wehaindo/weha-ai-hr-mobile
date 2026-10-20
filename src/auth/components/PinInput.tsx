@@ -107,13 +107,17 @@ export default function PinInput({ isOpen, onClose, onSubmit, userName, error }:
           </DialogDescription>
         </DialogHeader>
 
-        {/* PIN Display */}
-        <div className="flex justify-center gap-2 py-4" data-testid="pin-display">
+        {/* PIN Display — cells scale to the dialog width so 4–8 digit PINs never overflow */}
+        <div
+          className="grid gap-1.5 py-4 sm:gap-2"
+          style={{ gridTemplateColumns: `repeat(${PIN_MAX_LENGTH}, minmax(0, 1fr))` }}
+          data-testid="pin-display"
+        >
           {Array.from({ length: PIN_MAX_LENGTH }).map((_, i) => (
             <div
               key={i}
               data-testid={`pin-digit-${i}`}
-              className={`flex h-11 w-11 items-center justify-center rounded-xl border-2 transition-all ${
+              className={`flex aspect-square w-full max-h-11 max-w-11 items-center justify-center justify-self-center rounded-xl border-2 transition-all ${
                 i < pin.length ? 'scale-105 border-primary bg-primary' : 'border-border bg-muted'
               }`}
             >

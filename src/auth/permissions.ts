@@ -19,6 +19,7 @@ export const PERMISSIONS = [
   { id: 'ai.manage', label: 'Manage AI / voice configuration', category: 'AI' },
   { id: 'testing.manage', label: 'Manage testing fixtures and test sync', category: 'Testing' },
   { id: 'audit.view', label: 'View audit log', category: 'Settings' },
+  { id: 'transactions.use', label: 'Record transactions', category: 'Transactions' },
 ] as const;
 
 export type PermissionId = (typeof PERMISSIONS)[number]['id'];
@@ -51,9 +52,10 @@ export const SYSTEM_ROLES: RoleSeed[] = [
       'ai.manage',
       'testing.manage',
       'audit.view',
+      'transactions.use',
     ],
   },
-  { id: 'operator', name: 'Operator', permissions: ['app.use'] },
+  { id: 'operator', name: 'Operator', permissions: ['app.use', 'transactions.use'] },
 ];
 
 export const DEFAULT_ROLES = SYSTEM_ROLES.map((r) => r.id);

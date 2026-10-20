@@ -9,7 +9,9 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from '@/components/ui/toast';
 import { useRealtime } from '@/integration/realtime/useRealtime';
-import { Plug, PlugZap } from 'lucide-react';
+import { startAiRealtime, getAiRealtimeClient, type AiRealtimeStatus } from '@/integration/ai-realtime';
+import deviceConfig from '@/device.config';
+import { Plug, PlugZap, Send } from 'lucide-react';
 
 const STATUS_COLORS: Record<RealtimeStatus, string> = {
   offline: 'bg-muted text-muted-foreground',
@@ -21,6 +23,14 @@ const STATUS_COLORS: Record<RealtimeStatus, string> = {
   failed: 'bg-red-100 text-red-800',
 };
 
+const AI_STATUS_COLORS: Record<AiRealtimeStatus, string> = {
+  idle: 'bg-muted text-muted-foreground',
+  connecting: 'bg-amber-100 text-amber-800',
+  connected: 'bg-green-100 text-green-800',
+  disconnected: 'bg-muted text-muted-foreground',
+  error: 'bg-red-100 text-red-800',
+};
+
 export default function RealtimeSettingsPage() {
   const bridge = useBridge();
   const { state, refreshStatus } = useRealtime();
@@ -28,6 +38,23 @@ export default function RealtimeSettingsPage() {
   const [posId, setPosId] = useState('');
   const [posName, setPosName] = useState('');
   const [busy, setBusy] = useState(false);
+  const [aiUrl, setAiUrl] = useState('');
+  const [aiToken, setAiToken] = useState('');
+  const [aiTopic, setAiTopic] = useState('');
+  const [aiStatus, setAiStatus] = useState<AiRealtimeStatus>('idle');
+  const [aiEpoch, setAiEpoch] = useState(0);
+
+  // Track the shared AI Realtime client's connection status. Re-runs when the
+  // stored credential loads or the client is restarted (Save & Connect).
+  useEffect(() => {
+    const client = getAiRealtimeClient();
+    if (!client) {
+      setAiStatus('idle');
+      return;
+    }
+    setAiStatus(client.getStatus());
+    return client.onStatus(setAiStatus);
+  }, [aiToken, aiEpoch]);
 
   // Load persisted config from device_settings.
   useEffect(() => {
@@ -38,6 +65,9 @@ export default function RealtimeSettingsPage() {
       if (storedUrl) setUrl(storedUrl);
       if (storedId) setPosId(storedId);
       if (storedName) setPosName(storedName);
+      setAiUrl((await bridge.kv.get<string>('aiRealtime.url')) ?? deviceConfig.aiRealtime.url);
+      setAiToken((await bridge.kv.get<string>('aiRealtime.token')) ?? '');
+      setAiTopic((await bridge.kv.get<string>('aiRealtime.topic')) ?? deviceConfig.aiRealtime.topic);
     })();
   }, [bridge]);
 
@@ -87,6 +117,59 @@ export default function RealtimeSettingsPage() {
     await refreshStatus();
   }, [bridge, refreshStatus]);
 
+  async function saveAiRealtime(): Promise<void> {
+    if (!aiUrl.trim() || !aiToken.trim()) {
+      toast.add({ title: 'Gateway URL and credential are required', type: 'error' });
+      return;
+    }
+    setBusy(true);
+    try {
+      await bridge.kv.set('aiRealtime.url', aiUrl.trim());
+      await bridge.kv.set('aiRealtime.token', aiToken.trim());
+      await bridge.kv.set('aiRealtime.topic', aiTopic.trim() || deviceConfig.aiRealtime.topic);
+      const client = await startAiRealtime(bridge);
+      setAiEpoch((n) => n + 1);
+      toast.add({
+        title: client ? 'AI Realtime config saved and connected' : 'AI Realtime config saved',
+        type: 'success',
+      });
+    } catch (err) {
+      toast.add({ title: err instanceof Error ? err.message : 'Save failed', type: 'error' });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function sendTestEvent(): Promise<void> {
+    const client = getAiRealtimeClient();
+    if (!client) {
+      toast.add({ title: 'No AI Realtime client running — save a credential first', type: 'error' });
+      return;
+    }
+    if (!client.isConnected()) {
+      toast.add({ title: 'Not connected to the gateway yet', type: 'error' });
+      return;
+    }
+    setBusy(true);
+    try {
+      const result = await client.publish('device.test', {
+        deviceId: client.deviceId,
+        message: 'Hello from weha-device-framework',
+        at: new Date().toISOString(),
+      });
+      if (result.ok) {
+        toast.add({ title: `Test event delivered (eventId ${result.eventId ?? 'n/a'})`, type: 'success' });
+      } else {
+        toast.add({
+          title: `Test event failed: ${result.code}${result.message ? ` — ${result.message}` : ''}`,
+          type: 'error',
+        });
+      }
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <div className="space-y-4" data-testid="realtime-settings">
       <Card>
@@ -131,6 +214,74 @@ export default function RealtimeSettingsPage() {
                 Connect
               </Button>
             )}
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card data-testid="ai-realtime-settings">
+        <CardHeader>
+          <CardTitle>AI Realtime</CardTitle>
+          <CardDescription>
+            WEHA AI Realtime gateway (Socket.IO). Publishes device.active, device.heartbeat and
+            session events. Requires an application credential (whrt_ token).
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center gap-2">
+            <Badge className={AI_STATUS_COLORS[aiStatus]}>{aiStatus}</Badge>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="ai-rt-url">Gateway URL</Label>
+            <Input
+              id="ai-rt-url"
+              data-testid="ai-realtime-url-input"
+              value={aiUrl}
+              onChange={(e) => setAiUrl(e.target.value)}
+              placeholder="http://localhost:4002"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="ai-rt-token">Credential</Label>
+            <Input
+              id="ai-rt-token"
+              type="password"
+              data-testid="ai-realtime-token-input"
+              value={aiToken}
+              onChange={(e) => setAiToken(e.target.value)}
+              placeholder="whrt_..."
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="ai-rt-topic">Topic</Label>
+            <Input
+              id="ai-rt-topic"
+              data-testid="ai-realtime-topic-input"
+              value={aiTopic}
+              onChange={(e) => setAiTopic(e.target.value)}
+              placeholder={deviceConfig.aiRealtime.topic}
+            />
+          </div>
+
+          <div className="flex gap-2">
+            <Button
+              disabled={busy}
+              onClick={() => void saveAiRealtime()}
+              data-testid="save-ai-realtime"
+            >
+              Save & Connect
+            </Button>
+            <Button
+              variant="outline"
+              disabled={busy}
+              onClick={() => void sendTestEvent()}
+              data-testid="send-ai-realtime-test"
+            >
+              <Send className="size-4 mr-2" />
+              Send Test Event
+            </Button>
           </div>
         </CardContent>
       </Card>

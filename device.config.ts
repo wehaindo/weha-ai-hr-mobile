@@ -10,7 +10,7 @@ const deviceConfig = {
   version: '1.0.0',
 
   // Dev server port (must match the port in package.json scripts)
-  port: 3000,
+  port: 3180,
 
   // Branding
   brand: {
@@ -26,6 +26,15 @@ const deviceConfig = {
     pollIntervalMs: 15000,
   },
 
+  // WEHA AI Realtime (Socket.IO gateway) — see docs/AI-REALTIME.md.
+  // The credential (whrt_ token) is NOT stored here; it lives per-device in
+  // device_settings under the key `aiRealtime.token`.
+  aiRealtime: {
+    url: process.env.NEXT_PUBLIC_AI_REALTIME_URL ?? 'http://localhost:4002',
+    topic: 'tenant:default:device.events',
+    heartbeatMs: 60000,
+  },
+
   // Database file name (Electron stores it under app.getPath('userData'))
   dbName: 'device.db',
 
@@ -39,6 +48,7 @@ const deviceConfig = {
     datahub: true,
     ecr: true,
     realtime: true,
+    aiRealtime: true,
     cloud: true,
     google: true,
     grist: true,
