@@ -84,6 +84,85 @@ contextBridge.exposeInMainWorld('deviceBridge', {
     isOpen: (id: string) => ipcRenderer.invoke('display:is-open', id),
   },
 
+  // Location runs directly in this renderer-ish context (browser geolocation,
+  // no IPC) — mirrors src/platform/renderer-location.ts. Structural local
+  // types keep this file compiling under electron/tsconfig (no DOM lib).
+  location: {
+    permission: async () => {
+      const nav = (
+        globalThis as unknown as {
+          navigator?: {
+            geolocation?: unknown;
+            permissions?: {
+              query(descriptor: { name: string }): Promise<{ state: 'granted' | 'denied' | 'prompt' }>;
+            };
+          };
+        }
+      ).navigator;
+      if (!nav?.geolocation) return 'unsupported';
+      try {
+        const status = await nav.permissions?.query({ name: 'geolocation' });
+        if (status) return status.state;
+      } catch {
+        /* probe unsupported */
+      }
+      return 'prompt';
+    },
+    requestPermission: async () => {
+      const geo = (
+        globalThis as unknown as {
+          navigator?: {
+            geolocation?: {
+              getCurrentPosition(
+                success: () => void,
+                error?: (err: { code: number }) => void,
+                options?: { enableHighAccuracy?: boolean; timeout?: number; maximumAge?: number }
+              ): void;
+            };
+          };
+        }
+      ).navigator?.geolocation;
+      if (!geo) return 'denied';
+      return new Promise<'granted' | 'denied'>((resolve) => {
+        geo.getCurrentPosition(
+          () => resolve('granted'),
+          (err) => resolve(err.code === 1 ? 'denied' : 'granted'),
+          { enableHighAccuracy: false, timeout: 15000, maximumAge: 0 }
+        );
+      });
+    },
+    getCurrent: async (options?: { timeoutMs?: number }) => {
+      const geo = (
+        globalThis as unknown as {
+          navigator?: {
+            geolocation?: {
+              getCurrentPosition(
+                success: (position: { coords: { latitude: number; longitude: number; accuracy: number } }) => void,
+                error?: (err: { code: number }) => void,
+                options?: { enableHighAccuracy?: boolean; timeout?: number; maximumAge?: number }
+              ): void;
+            };
+          };
+        }
+      ).navigator?.geolocation;
+      if (!geo) throw new Error('unsupported');
+      return new Promise((resolve, reject) => {
+        geo.getCurrentPosition(
+          (pos) =>
+            resolve({
+              latitude: pos.coords.latitude,
+              longitude: pos.coords.longitude,
+              accuracyMeters: pos.coords.accuracy,
+              capturedAt: new Date().toISOString(),
+            }),
+          (err) =>
+            reject(new Error(err.code === 1 ? 'permission_denied' : err.code === 3 ? 'timeout' : 'unavailable')),
+          { enableHighAccuracy: true, maximumAge: 0, timeout: options?.timeoutMs ?? 15000 }
+        );
+      });
+    },
+  },
+
   events: {
     on: (event: string, listener: (payload: unknown) => void) => {
       if (!EVENT_CHANNELS.has(event)) return () => {};

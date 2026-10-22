@@ -83,6 +83,24 @@ export interface ExchangeOptions {
   timeoutMs?: number;
 }
 
+/** Permission state for a device capability (browser permission semantics). */
+export type LocationPermission = 'granted' | 'denied' | 'prompt' | 'unsupported';
+
+/** A single GNSS/network location fix. */
+export interface GeoFix {
+  latitude: number;
+  longitude: number;
+  /** Device-reported accuracy radius in meters (never a guarantee). */
+  accuracyMeters: number;
+  /** ISO-8601 UTC capture timestamp — the device clock, evidence only. */
+  capturedAt: string;
+}
+
+export interface LocationOptions {
+  /** Milliseconds to wait for a fix. Default 15000. */
+  timeoutMs?: number;
+}
+
 export interface RealtimeConnectOptions {
   url: string;
   identity: RealtimeIdentity;
@@ -134,6 +152,18 @@ export interface DeviceBridge {
     close(id: string): Promise<void>;
     /** Whether the display for `id` is currently open. */
     isOpen(id: string): Promise<boolean>;
+  };
+  location: {
+    /** Current permission state; 'unsupported' when the platform has no geolocation. */
+    permission(): Promise<LocationPermission>;
+    /** Request permission at the point of use (triggers the OS/browser prompt). */
+    requestPermission(): Promise<'granted' | 'denied'>;
+    /**
+     * Capture a high-accuracy fix. Rejects with a plain Error carrying a code
+     * message: 'permission_denied' | 'timeout' | 'unavailable' | 'unsupported'
+     * (plain Error because contextBridge strips prototypes).
+     */
+    getCurrent(options?: LocationOptions): Promise<GeoFix>;
   };
   print: {
     /** Send raw printer bytes to a network target (host:port, e.g. raw TCP 9100). */

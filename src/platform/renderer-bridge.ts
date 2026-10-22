@@ -7,6 +7,7 @@ import { runMigrations } from '../db/migrate';
 import { frameworkMigrations } from '../db/migrations';
 import { RealtimeClient, type RealtimeSocket } from '../integration/realtime/realtime-client';
 import { createRendererDisplay } from './renderer-display';
+import { createRendererLocation } from './renderer-location';
 import type {
   AppInfo,
   CloudRequest,
@@ -181,6 +182,7 @@ export async function createRendererBridge(platform: PlatformKind): Promise<Devi
     },
 
     display: createRendererDisplay(),
+    location: createRendererLocation(),
 
     print: {
       async raw(): Promise<void> {

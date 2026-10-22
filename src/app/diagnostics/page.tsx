@@ -125,8 +125,10 @@ export default function DiagnosticsPage() {
             })}
           </div>
           <p className="pt-3 text-xs text-muted-foreground">
-            Only capabilities verified at runtime are marked available. Camera, QR,
-            RFID, fingerprint and location need Capacitor plugins (Phase 2/3).
+            Only capabilities verified at runtime are marked available. Location,
+            camera and QR are detected on the web runtime (Phase 3); Android
+            needs the native Capacitor plugins (SDK-blocked), and RFID /
+            fingerprint need verified hardware (deferred).
           </p>
         </CardContent>
       </Card>

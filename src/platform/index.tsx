@@ -31,11 +31,24 @@ function isCapacitorNative(): boolean {
   return !!cap?.isNativePlatform?.();
 }
 
+// One renderer bridge per page generation: StrictMode/HMR/remounts must never
+// create a second sql.js engine on the same IndexedDB blob — two engines race
+// last-writer-wins and can overwrite each other's persisted state.
+let rendererBridgePromise: Promise<DeviceBridge> | null = null;
+
 export async function getBridge(): Promise<DeviceBridge> {
   if (isElectronBridge((window as unknown as { deviceBridge?: unknown }).deviceBridge)) {
     return (window as unknown as { deviceBridge: DeviceBridge }).deviceBridge;
   }
-  return createRendererBridge(isCapacitorNative() ? 'capacitor' : 'web');
+  if (!rendererBridgePromise) {
+    rendererBridgePromise = createRendererBridge(isCapacitorNative() ? 'capacitor' : 'web').catch(
+      (err: unknown) => {
+        rendererBridgePromise = null; // allow a retry after a failed creation
+        throw err;
+      }
+    );
+  }
+  return rendererBridgePromise;
 }
 
 const BridgeContext = createContext<DeviceBridge | null>(null);

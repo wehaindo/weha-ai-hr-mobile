@@ -92,4 +92,6 @@ Change it immediately on a real device.
 - [ESS Phase 1](docs/ESS-PHASE1.md) — framework assessment & deployment decision
 - [ESS Phase 2](docs/ESS-PHASE2.md) — employee dashboard & profile (acceptance evidence)
 - [ESS API contract](docs/ESS-API-CONTRACT.md) — backend interface the ESS client is built against
+- [ESS Phase 3](docs/ESS-PHASE3.md) — device-based attendance: GPS + QR, offline queue (acceptance evidence)
+- [ESS attendance contract](docs/ESS-ATTENDANCE-CONTRACT.md) — attendance backend interface the client is built against
 - [AGENTS.md](AGENTS.md) — conventions for AI agents working in this repo

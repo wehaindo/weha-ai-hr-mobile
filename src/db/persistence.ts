@@ -27,6 +27,14 @@ function requestToPromise<T>(request: IDBRequest<T>): Promise<T> {
   });
 }
 
+function whenTransactionDone(tx: IDBTransaction): Promise<void> {
+  return new Promise((resolve, reject) => {
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error ?? new Error('IndexedDB transaction failed'));
+    tx.onabort = () => reject(tx.error ?? new Error('IndexedDB transaction aborted'));
+  });
+}
+
 export class IndexedDbBlobStore implements BlobStore {
   async load(): Promise<Uint8Array | null> {
     const db = await openDb();
@@ -49,6 +57,11 @@ export class IndexedDbBlobStore implements BlobStore {
       // Store as ArrayBuffer — structured-clone friendly across browsers.
       const copy = data.slice().buffer;
       await requestToPromise(tx.objectStore(STORE_NAME).put(copy, BLOB_KEY));
+      // The put request succeeding does NOT mean the data is durable: the
+      // transaction commits asynchronously, and a navigation (page reload)
+      // before that aborts it — losing the write (e.g. the mobile session
+      // row right after login). Await the commit before reporting success.
+      await whenTransactionDone(tx);
     } finally {
       db.close();
     }

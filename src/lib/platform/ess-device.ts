@@ -43,6 +43,13 @@ function detectCapabilities(): EssCapability[] {
   // Web Notifications back bridge.notify on the PWA; Android needs a native
   // plugin (Phase 2 gap — see docs/ESS-PHASE1.md).
   if (typeof Notification !== 'undefined') caps.push('notifications');
+  // Location: browser geolocation behind DeviceBridge.location (Phase 3).
+  if (typeof navigator !== 'undefined' && !!navigator.geolocation) caps.push('location');
+  // Camera + QR (Phase 3): getUserMedia present; QR decoding is bundled
+  // (BarcodeDetector or the jsQR fallback), so qr-scan follows the camera.
+  if (typeof navigator !== 'undefined' && !!navigator.mediaDevices?.getUserMedia) {
+    caps.push('camera', 'qr-scan');
+  }
   return caps;
 }
 

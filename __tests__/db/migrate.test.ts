@@ -73,6 +73,7 @@ describe('runMigrations', () => {
       'test_lookups',
       'sample_transactions',
       'sample_transaction_lines',
+      'attendance_queue',
     ]) {
       expect(tables).toContain(expected);
     }

@@ -27,6 +27,8 @@ export const RETENTION_TABLES: RetentionTable[] = [
   { table: 'supabase_sync_jobs', column: 'created_at', defaultDays: 90 },
   { table: 'supabase_sync_logs', column: 'created_at', defaultDays: 90 },
   { table: 'datahub_sync_state', column: 'updated_at', defaultDays: 365 },
+  // Attendance capture evidence (coordinates, QR proof) — 180 days, per BRD §8.
+  { table: 'attendance_queue', column: 'created_at', defaultDays: 180 },
 ];
 
 export interface RetentionConfig {

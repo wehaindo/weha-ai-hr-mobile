@@ -143,6 +143,23 @@ export async function createFakeBridge(): Promise<FakeBridgeHandle> {
       },
     },
 
+    location: {
+      async permission() {
+        return 'granted' as const;
+      },
+      async requestPermission() {
+        return 'granted' as const;
+      },
+      async getCurrent() {
+        return {
+          latitude: -6.2088,
+          longitude: 106.8456,
+          accuracyMeters: 10,
+          capturedAt: new Date().toISOString(),
+        };
+      },
+    },
+
     events: {
       on<K extends keyof DeviceBridgeEventMap>(event: K, listener: DeviceBridgeEventMap[K]) {
         if (!listeners.has(event)) listeners.set(event, new Set());

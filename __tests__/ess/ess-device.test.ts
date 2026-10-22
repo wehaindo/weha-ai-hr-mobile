@@ -31,14 +31,35 @@ describe('ESS device adapter (framework-backed)', () => {
     await expect(adapter.getCapabilities()).resolves.toEqual([]);
   });
 
-  it('never reports unsupported capabilities (camera, qr-scan, rfid, fingerprint, location)', async () => {
+  it('never reports hardware-deferred capabilities (rfid, fingerprint)', async () => {
     const { bridge } = await createFakeBridge();
     vi.stubGlobal('Notification', class FakeNotification {});
     const capabilities = await createEssDeviceAdapter(bridge).getCapabilities();
 
-    for (const missing of ['camera', 'qr-scan', 'rfid', 'fingerprint', 'location'] as const) {
+    for (const missing of ['rfid', 'fingerprint'] as const) {
       expect(capabilities).not.toContain(missing);
     }
+  });
+
+  it('detects location when the browser exposes geolocation', async () => {
+    const { bridge } = await createFakeBridge();
+    vi.stubGlobal('navigator', { ...window.navigator, geolocation: { getCurrentPosition: vi.fn() } });
+
+    const capabilities = await createEssDeviceAdapter(bridge).getCapabilities();
+    expect(capabilities).toContain('location');
+    expect(capabilities).not.toContain('camera');
+  });
+
+  it('detects camera and qr-scan when getUserMedia is available', async () => {
+    const { bridge } = await createFakeBridge();
+    vi.stubGlobal('navigator', {
+      ...window.navigator,
+      mediaDevices: { getUserMedia: vi.fn() },
+    });
+
+    const capabilities = await createEssDeviceAdapter(bridge).getCapabilities();
+    expect(capabilities).toContain('camera');
+    expect(capabilities).toContain('qr-scan');
   });
 
   it('normalizes init failures into EssDeviceError', async () => {
