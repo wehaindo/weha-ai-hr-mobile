@@ -71,6 +71,8 @@ describe('runMigrations', () => {
       'test_orders',
       'test_order_lines',
       'test_lookups',
+      'sample_transactions',
+      'sample_transaction_lines',
     ]) {
       expect(tables).toContain(expected);
     }
@@ -107,6 +109,40 @@ describe('runMigrations', () => {
       "SELECT COUNT(*) AS c FROM role_permissions WHERE role_id = 'operator' AND permission_id = 'hardware.manage'"
     );
     expect(op[0].c).toBe(0);
+  });
+
+  it('grants transactions.use to admin, manager and operator roles', async () => {
+    const db = await freshEngine();
+    runMigrations(db, frameworkMigrations);
+
+    for (const roleId of ['admin', 'manager', 'operator']) {
+      const rows = db.query<{ c: number }>(
+        "SELECT COUNT(*) AS c FROM role_permissions WHERE role_id = ? AND permission_id = 'transactions.use'",
+        [roleId]
+      );
+      expect(rows[0].c).toBe(1);
+    }
+  });
+
+  it('inserts and cascades sample transactions', async () => {
+    const db = await freshEngine();
+    runMigrations(db, frameworkMigrations);
+
+    const now = new Date().toISOString();
+    db.execute(
+      `INSERT INTO sample_transactions (id, reference, status, customer_name, total, notes, created_by, created_at, updated_at)
+       VALUES ('tx1', 'TX-1', 'COMPLETED', NULL, 2500, NULL, 'u1', ?, ?)`,
+      [now, now]
+    );
+    db.execute(
+      `INSERT INTO sample_transaction_lines (id, transaction_id, description, quantity, unit_price, line_total, created_at, updated_at)
+       VALUES ('line1', 'tx1', 'Item', 2, 1250, 2500, ?, ?)`,
+      [now, now]
+    );
+    expect(db.query<{ c: number }>('SELECT COUNT(*) AS c FROM sample_transaction_lines')[0].c).toBe(1);
+
+    db.execute("DELETE FROM sample_transactions WHERE id = 'tx1'");
+    expect(db.query<{ c: number }>('SELECT COUNT(*) AS c FROM sample_transaction_lines')[0].c).toBe(0);
   });
 
   it('seeds the admin user with permissions and default settings', async () => {

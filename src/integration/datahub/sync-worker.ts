@@ -3,9 +3,13 @@
 // the DeviceBridge. Push/pull entity types come from the hub-entities registry.
 
 import type { DeviceBridge } from '@/platform';
-import { DatahubClient, type SyncEvent, type PullResult } from './client';
+import { DatahubClient, type RegisterResult, type SyncEvent, type PullResult } from './client';
 import { applyEvent } from './apply';
-import { listHubEntityTypes } from '../hub-entities';
+import { listHubEntityTypes, registerHubEntity } from '../hub-entities';
+
+// Hub _sync_rejects events (terminal failures of our pushed events) land in a
+// framework-owned table so the sync monitor can surface rejected pushes.
+registerHubEntity('_sync_rejects', { table: 'datahub_rejects' });
 
 const POLL_INTERVAL_MS = 30_000;
 const MAX_EVENTS_PER_PULL = 200;
@@ -253,6 +257,7 @@ export interface DatahubConfigRow {
   endpoint: string;
   device_id: string | null;
   device_token: string | null;
+  enrollment_key: string | null;
   enabled: number;
   last_sync_at: string | null;
   created_at: string;
@@ -267,23 +272,65 @@ export class DatahubService {
     return rows[0] ?? null;
   }
 
-  async saveConfig(input: { endpoint: string; device_token?: string; enabled?: boolean }): Promise<DatahubConfigRow> {
+  async saveConfig(input: {
+    endpoint: string;
+    device_token?: string;
+    device_id?: string;
+    enrollment_key?: string;
+    enabled?: boolean;
+  }): Promise<DatahubConfigRow> {
     const existing = await this.getConfig();
     const timestamp = new Date().toISOString();
 
     if (existing) {
       await this.bridge.db.execute(
-        'UPDATE datahub_configs SET endpoint = ?, device_token = ?, enabled = ?, updated_at = ? WHERE id = ?',
-        [input.endpoint, input.device_token ?? existing.device_token, input.enabled === undefined ? existing.enabled : input.enabled ? 1 : 0, timestamp, existing.id]
+        'UPDATE datahub_configs SET endpoint = ?, device_token = ?, device_id = ?, enrollment_key = ?, enabled = ?, updated_at = ? WHERE id = ?',
+        [
+          input.endpoint,
+          input.device_token ?? existing.device_token,
+          input.device_id ?? existing.device_id,
+          input.enrollment_key ?? existing.enrollment_key,
+          input.enabled === undefined ? existing.enabled : input.enabled ? 1 : 0,
+          timestamp,
+          existing.id,
+        ]
       );
       return (await this.getConfig())!;
     }
 
     const id = randomHex(16);
     await this.bridge.db.execute(
-      `INSERT INTO datahub_configs (id, name, endpoint, device_token, enabled, created_at, updated_at) VALUES (?, 'Data Hub', ?, ?, ?, ?, ?)`,
-      [id, input.endpoint, input.device_token ?? null, input.enabled ? 1 : 0, timestamp, timestamp]
+      `INSERT INTO datahub_configs (id, name, endpoint, device_token, device_id, enrollment_key, enabled, created_at, updated_at) VALUES (?, 'Data Hub', ?, ?, ?, ?, ?, ?, ?)`,
+      [id, input.endpoint, input.device_token ?? null, input.device_id ?? null, input.enrollment_key ?? null, input.enabled ? 1 : 0, timestamp, timestamp]
     );
     return (await this.getConfig())!;
+  }
+
+  /**
+   * Register this device against the hub with an enrollment key. Persists the
+   * returned device token + id; a hub that requires approval returns no token
+   * (status PENDING until an administrator approves it).
+   */
+  async register(input: {
+    endpoint: string;
+    enrollment_key: string;
+    pos_id: string;
+    name?: string;
+    device_type?: string;
+  }): Promise<RegisterResult> {
+    const client = new DatahubClient(input.endpoint);
+    const result = await client.register({
+      pos_id: input.pos_id,
+      name: input.name ?? input.pos_id,
+      device_type: input.device_type ?? 'POS',
+      enrollment_key: input.enrollment_key,
+    });
+    await this.saveConfig({
+      endpoint: input.endpoint,
+      enrollment_key: input.enrollment_key,
+      device_id: result.device.id,
+      ...(result.token ? { device_token: result.token } : {}),
+    });
+    return result;
   }
 }

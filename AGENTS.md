@@ -49,7 +49,7 @@ Read `docs/ARCHITECTURE.md` before making structural changes.
 - Toasts: `import { toast } from '@/components/ui/toast'` → `toast.add({ title, type })`.
 - Base UI primitives use the `render={<Button />}` prop, NOT `asChild`.
 - Tests: Vitest in `__tests__/` (jsdom, `@` alias), Playwright in `tests/e2e/`
-  (serial, port 3000). The web bridge runs real sql.js against IndexedDB-mocked
+  (serial, port 3180). The web bridge runs real sql.js against IndexedDB-mocked
   storage; prefer real sql.js over fake SQL mocks.
 - Run `npx tsc --noEmit`, `npm run lint`, `npm run test:run` before finishing.
 

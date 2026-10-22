@@ -7,6 +7,7 @@ import { Toaster } from '@/components/ui/toast';
 import { useAuthBootstrap } from '@/auth/bootstrap';
 import { useSyncWorker } from '@/sync/useSyncWorker';
 import { useCloudSyncWorkers } from '@/sync/useCloudSyncWorkers';
+import { useAiRealtime } from '@/integration/ai-realtime';
 import { useSettingsBoot } from '@/lib/settings-boot';
 import { useTestingBoot } from '@/testing/use-testing-boot';
 import { initThemePreset } from '@/ui/themes';
@@ -15,6 +16,7 @@ function AppRuntime({ children }: { children: ReactNode }) {
   useAuthBootstrap();
   useSyncWorker();
   useCloudSyncWorkers();
+  useAiRealtime();
   useSettingsBoot();
   useTestingBoot();
   return <>{children}</>;

@@ -9,6 +9,8 @@ export interface SessionUser {
   role: string;
   avatar_color?: string;
   permissions: string[];
+  /** 'local' (SQLite users table) or 'mobile' (weha-framework account). */
+  authSource?: 'local' | 'mobile';
 }
 
 interface AuthStore {

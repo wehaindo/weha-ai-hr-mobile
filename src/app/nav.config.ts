@@ -3,6 +3,7 @@
 
 import {
   LayoutDashboard,
+  Receipt,
   RefreshCw,
   Settings,
   type LucideIcon,
@@ -22,6 +23,7 @@ export interface NavItem {
 
 export const NAV_ITEMS: NavItem[] = [
   { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+  { label: 'Transactions', href: '/transactions', icon: Receipt, permission: 'transactions.use' },
   { label: 'Sync', href: '/sync', icon: RefreshCw, permission: 'sync.manage' },
   { label: 'Settings', href: '/settings', icon: Settings, permission: 'settings.manage' },
 ];

@@ -18,8 +18,10 @@ export default defineConfig({
     reporters: ['default'],
   },
   resolve: {
-    alias: {
-      '@': path.resolve(__dirname, './src'),
-    },
+    alias: [
+      // Mirrors tsconfig paths: '@/device.config' lives at the repo root, not under src/.
+      { find: /^@\/device\.config$/, replacement: path.resolve(__dirname, './device.config.ts') },
+      { find: '@', replacement: path.resolve(__dirname, './src') },
+    ],
   },
 });
