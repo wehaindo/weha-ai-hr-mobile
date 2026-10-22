@@ -1,0 +1,52 @@
+# appId/productName are kept in sync with device.config.ts by scripts/init-app.ts
+appId: com.weha.deviceframework
+productName: Device Framework
+directories:
+  buildResources: build
+files:
+  - "!**/.vscode/*"
+  - "!src/**"
+  - "!electron/**/*.ts"
+  - "!electron/tsconfig.json"
+  - "!scripts/**"
+  - "!__tests__/**"
+  - "!tests/**"
+  - "!docs/**"
+  - "!device.config.ts"
+  - "!electron-builder.yml"
+  - "!next.config.*"
+  - "!postcss.config.*"
+  - "!tsconfig.json"
+  - "!vitest.config.*"
+  - "!playwright.config.*"
+  - "!components.json"
+  - "!*.lock"
+  - "!*.db"
+  - out/**
+  - electron/dist/**
+asarUnpack:
+  - node_modules/sql.js/**
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64
+  artifactName: ${productName}-${version}-setup.${ext}
+nsis:
+  artifactName: ${productName}-${version}-setup.${ext}
+  shortcutName: ${productName}
+  uninstallDisplayName: ${productName}
+  createDesktopShortcut: always
+mac:
+  target:
+    - target: dmg
+      arch:
+        - x64
+        - arm64
+  artifactName: ${productName}-${version}.${ext}
+linux:
+  target:
+    - target: AppImage
+      arch:
+        - x64
+  artifactName: ${productName}-${version}.${ext}
