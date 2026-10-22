@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
-import { findNavItem, isFullscreenRoute, isPublicRoute, routePermission } from '@/app/nav.config';
+import { findNavItem, isFullscreenRoute, isPublicRoute, routeModule, routePermission } from '@/app/nav.config';
 import { useAuthStore } from '@/stores/auth';
 import deviceConfig from '@/device.config';
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar';
@@ -25,6 +25,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   const isPublic = isPublicRoute(pathname);
   const permission = routePermission(pathname);
+  const featureModule = routeModule(pathname);
 
   useEffect(() => {
     if (!isPublic && !isAuthenticated) {
@@ -54,6 +55,20 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           <p className="text-lg font-semibold">Access denied</p>
           <p className="mt-2 text-sm text-muted-foreground">
             Your role does not have the <code className="font-mono">{permission}</code> permission.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // Feature-module gate: route not shipped for this build target.
+  if (featureModule && !deviceConfig.modules[featureModule]) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-background p-6">
+        <div className="max-w-md rounded-lg border p-8 text-center">
+          <p className="text-lg font-semibold">Not available</p>
+          <p className="mt-2 text-sm text-muted-foreground">
+            This feature is not included in the <code className="font-mono">{deviceConfig.target}</code> build.
           </p>
         </div>
       </div>

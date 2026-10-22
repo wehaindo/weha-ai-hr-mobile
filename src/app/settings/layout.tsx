@@ -1,32 +1,42 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { redirect, usePathname } from 'next/navigation';
 import { SettingsIcon, SparklesIcon, UsersIcon, InfoIcon, CpuIcon, FileTextIcon, PlugIcon, CloudIcon, RadioIcon, CloudSyncIcon, HomeIcon, LayoutDashboardIcon, ReceiptIcon, ShieldIcon, SaveIcon, MicIcon, ArchiveIcon, FlaskConical } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import deviceConfig, { type ModuleKey } from '@/device.config';
 
-const TABS = [
+const TABS: { href: string; label: string; icon: typeof HomeIcon; module?: ModuleKey }[] = [
   { href: '/settings/general', label: 'General', icon: HomeIcon },
   { href: '/settings/display', label: 'Layout', icon: LayoutDashboardIcon },
   { href: '/settings/users', label: 'Users', icon: UsersIcon },
-  { href: '/settings/security', label: 'Security', icon: ShieldIcon },
-  { href: '/settings/hardware', label: 'Hardware', icon: CpuIcon },
-  { href: '/settings/print-templates', label: 'Templates', icon: FileTextIcon },
-  { href: '/settings/receipt', label: 'Receipt', icon: ReceiptIcon },
-  { href: '/settings/integrations', label: 'Integrations', icon: PlugIcon },
-  { href: '/settings/datahub', label: 'Data Hub', icon: CloudIcon },
-  { href: '/settings/testing', label: 'Testing', icon: FlaskConical },
-  { href: '/settings/cloud-sync', label: 'Cloud Sync', icon: CloudSyncIcon },
-  { href: '/settings/ai-voice', label: 'Ai Voice', icon: MicIcon },
-  { href: '/settings/realtime', label: 'Realtime', icon: RadioIcon },
-  { href: '/settings/backup', label: 'Backup', icon: SaveIcon },
-  { href: '/settings/retention', label: 'Data Retention', icon: ArchiveIcon },
+  { href: '/settings/security', label: 'Security', icon: ShieldIcon, module: 'security' },
+  { href: '/settings/hardware', label: 'Hardware', icon: CpuIcon, module: 'hardware' },
+  { href: '/settings/print-templates', label: 'Templates', icon: FileTextIcon, module: 'print' },
+  { href: '/settings/receipt', label: 'Receipt', icon: ReceiptIcon, module: 'print' },
+  { href: '/settings/integrations', label: 'Integrations', icon: PlugIcon, module: 'integration' },
+  { href: '/settings/datahub', label: 'Data Hub', icon: CloudIcon, module: 'datahub' },
+  { href: '/settings/testing', label: 'Testing', icon: FlaskConical, module: 'testing' },
+  { href: '/settings/cloud-sync', label: 'Cloud Sync', icon: CloudSyncIcon, module: 'cloud' },
+  { href: '/settings/ai-voice', label: 'Ai Voice', icon: MicIcon, module: 'aiVoice' },
+  { href: '/settings/realtime', label: 'Realtime', icon: RadioIcon, module: 'realtime' },
+  { href: '/settings/backup', label: 'Backup', icon: SaveIcon, module: 'backup' },
+  { href: '/settings/retention', label: 'Data Retention', icon: ArchiveIcon, module: 'retention' },
   { href: '/settings/appearance', label: 'Appearance', icon: SparklesIcon },
   { href: '/settings/about', label: 'About', icon: InfoIcon },
 ];
 
+const visibleTabs = TABS.filter((tab) => !tab.module || deviceConfig.modules[tab.module]);
+
 export default function SettingsLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+
+  // Deep link to a tab that isn't shipped for this build target → fall back.
+  const activeTab = visibleTabs.find((tab) => pathname === tab.href || pathname.startsWith(`${tab.href}/`));
+  if (!activeTab && pathname !== '/settings') {
+    const gated = TABS.find((tab) => !visibleTabs.includes(tab) && (pathname === tab.href || pathname.startsWith(`${tab.href}/`)));
+    if (gated) redirect('/settings/general');
+  }
 
   return (
     <div className="mx-auto max-w-4xl space-y-6" data-testid="settings-page">
@@ -36,7 +46,7 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
       </div>
 
       <nav className="flex flex-wrap gap-1 border-b" data-testid="settings-tabs">
-        {TABS.map((tab) => {
+        {visibleTabs.map((tab) => {
           const active = pathname === tab.href;
           return (
             <Link

@@ -19,12 +19,20 @@ Sign in with the seeded admin (PIN **1234**), then change it in Settings → Use
 
 ### Other targets
 
+Each build script pins the **build target** (`NEXT_PUBLIC_APP_TARGET`), which
+decides the feature profile — full for `electron`/`cap-tablet`, minimal for
+`web`/`cap-mobile` (see docs/ARCHITECTURE.md → Build targets):
+
 ```bash
-npm run dev:electron   # desktop shell against the dev server
-npm run build          # static export to out/
-npm run electron:build # packaged desktop app (NSIS/dmg/AppImage)
-npm run cap:sync       # build + sync into android/ ios/ (run `npx cap add android` once)
+npm run electron:dev    # desktop shell (full profile) against the dev server
+npm run build           # static web export to out/ (minimal profile)
+npm run electron:build  # packaged desktop app (NSIS/dmg/AppImage), full
+npm run cap:sync        # tablet build + sync into android/ ios/, full
+npm run cap:sync:mobile # phone build + sync, minimal
 ```
+
+Capacitor phone and tablet ship **separate** bundles (each target has its own
+`next build`) — sync the right one before `cap run android|ios`.
 
 ### Start a new device app
 

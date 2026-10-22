@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { NAV_ITEMS } from '@/app/nav.config';
+import { navItemsForTarget } from '@/app/nav.config';
 import { useAuthStore } from '@/stores/auth';
 import deviceConfig from '@/device.config';
 import {
@@ -25,7 +25,7 @@ export default function AppSidebar() {
   const can = useAuthStore((s) => s.can);
   const user = useAuthStore((s) => s.user);
 
-  const items = NAV_ITEMS.filter((item) => !item.permission || can(item.permission));
+  const items = navItemsForTarget().filter((item) => !item.permission || can(item.permission));
 
   return (
     <Sidebar collapsible="icon">

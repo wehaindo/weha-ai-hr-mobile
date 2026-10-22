@@ -1,13 +1,70 @@
-// Single source of truth for app identity.
+// Single source of truth for app identity + feature profile.
 // Imported by the Next.js app (client-safe: keep it a static object, NO secrets),
 // by electron (compiled via tsc) and by capacitor.config.ts.
 // Run `npm run init-app` to rewrite this for a new device app.
+//
+// The feature set is chosen at BUILD time by NEXT_PUBLIC_APP_TARGET (see
+// src/lib/app-target.ts): electron and cap-tablet get the full profile,
+// web/pwa and cap-mobile (phone) get the minimal one.
+
+import { APP_TARGET, isFullTarget } from './src/lib/app-target';
+
+// Full profile: Electron desktop and Capacitor tablets.
+const fullModules = {
+  sync: true,
+  print: true,
+  hardware: true,
+  onScreenKeyboard: true,
+  integration: true,
+  datahub: true,
+  ecr: true,
+  realtime: true,
+  aiRealtime: true,
+  cloud: true,
+  google: true,
+  grist: true,
+  supabase: true,
+  security: true,
+  backup: true,
+  retention: true,
+  aiVoice: true,
+  testing: true,
+};
+
+// TS enforces the minimal profile covers every module key.
+type ModuleFlags = { [K in keyof typeof fullModules]: boolean };
+
+// Minimal profile: web/pwa and phone Capacitor — sync, device enrollment and
+// auth only; no printing, hardware, cloud targets or dev tooling.
+const minimalModules: ModuleFlags = {
+  sync: true,
+  print: false,
+  hardware: false,
+  onScreenKeyboard: false,
+  integration: false,
+  datahub: true,
+  ecr: false,
+  realtime: false,
+  aiRealtime: false,
+  cloud: false,
+  google: false,
+  grist: false,
+  supabase: false,
+  security: true,
+  backup: false,
+  retention: true,
+  aiVoice: false,
+  testing: false,
+};
 
 const deviceConfig = {
   // Identity
   appName: 'Device Framework',
   appId: 'com.weha.deviceframework',
   version: '1.0.0',
+
+  // Build target this bundle was produced for ('web' when the env was unset)
+  target: APP_TARGET,
 
   // Dev server port (must match the port in package.json scripts)
   port: 3180,
@@ -38,29 +95,11 @@ const deviceConfig = {
   // Database file name (Electron stores it under app.getPath('userData'))
   dbName: 'device.db',
 
-  // Feature switches for framework modules
-  modules: {
-    sync: true,
-    print: true,
-    hardware: true,
-    onScreenKeyboard: true,
-    integration: true,
-    datahub: true,
-    ecr: true,
-    realtime: true,
-    aiRealtime: true,
-    cloud: true,
-    google: true,
-    grist: true,
-    supabase: true,
-    security: true,
-    backup: true,
-    retention: true,
-    aiVoice: true,
-    testing: true,
-  },
+  // Feature switches for framework modules, resolved from the build target.
+  modules: isFullTarget ? fullModules : minimalModules,
 };
 
 export type DeviceConfig = typeof deviceConfig;
+export type ModuleKey = keyof ModuleFlags;
 
 export default deviceConfig;
