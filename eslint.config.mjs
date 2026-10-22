@@ -12,6 +12,13 @@ const eslintConfig = defineConfig([
       "react-hooks/set-state-in-effect": "off",
     },
   },
+  {
+    files: ["scripts/**/*.js"],
+    rules: {
+      // Standalone Node scripts are CommonJS — require() is correct there.
+      "@typescript-eslint/no-require-imports": "off",
+    },
+  },
   globalIgnores([
     ".next/**",
     "out/**",

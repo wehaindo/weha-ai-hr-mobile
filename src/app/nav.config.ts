@@ -2,10 +2,15 @@
 // routes and permissions; the shell derives sidebar, header and layout from it.
 
 import {
+  Activity,
+  CalendarCheck,
+  CalendarDays,
+  Inbox,
   LayoutDashboard,
   Receipt,
   RefreshCw,
   Settings,
+  User,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -23,8 +28,13 @@ export interface NavItem {
 
 export const NAV_ITEMS: NavItem[] = [
   { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+  { label: 'My Attendance', href: '/attendance', icon: CalendarCheck, permission: 'ess.use' },
+  { label: 'Leave', href: '/leave', icon: CalendarDays, permission: 'ess.use' },
+  { label: 'Requests', href: '/requests', icon: Inbox, permission: 'ess.use' },
+  { label: 'Profile', href: '/profile', icon: User, permission: 'ess.use' },
   { label: 'Transactions', href: '/transactions', icon: Receipt, permission: 'transactions.use' },
   { label: 'Sync', href: '/sync', icon: RefreshCw, permission: 'sync.manage' },
+  { label: 'Diagnostics', href: '/diagnostics', icon: Activity, permission: 'ess.use' },
   { label: 'Settings', href: '/settings', icon: Settings, permission: 'settings.manage' },
 ];
 

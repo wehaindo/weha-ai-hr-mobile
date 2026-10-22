@@ -8,6 +8,7 @@ import { useAuthStore } from '@/stores/auth';
 import { useSyncStore } from '@/sync/sync-store';
 import { useDeviceProfile } from '@/hooks/useDeviceProfile';
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
+import { loadEmployeeContext, type EssEmployeeContext } from '@/lib/ess/employee-context';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -27,6 +28,22 @@ export default function DashboardPage() {
   const { isOnline } = useOnlineStatus();
   const [info, setInfo] = useState<AppInfoState | null>(null);
   const [userCount, setUserCount] = useState(0);
+  const [employee, setEmployee] = useState<EssEmployeeContext | null>(null);
+
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+    void loadEmployeeContext(bridge, user)
+      .then((ctx) => {
+        if (!cancelled) setEmployee(ctx);
+      })
+      .catch(() => {
+        if (!cancelled) setEmployee(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [bridge, user]);
 
   useEffect(() => {
     let cancelled = false;
@@ -81,6 +98,29 @@ export default function DashboardPage() {
               Screen: {profile ? `${profile.width}×${profile.height}` : '…'}
               {profile?.isTouch ? ' · touch' : ''}
             </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-2">
+            <CardDescription>Employee</CardDescription>
+            <CardTitle className="text-lg">
+              {employee?.authSource === 'mobile' ? 'WEHA account' : 'Device account'}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-1 text-xs text-muted-foreground">
+            <p>
+              Employee ID:{' '}
+              <span className="font-mono">{employee?.employeeId ?? 'not linked'}</span>
+            </p>
+            <p>
+              Tenant: <span className="font-mono">{employee?.tenantId ?? '—'}</span>
+            </p>
+            <Link href="/profile">
+              <Button variant="link" className="h-auto p-0 text-xs">
+                Open profile →
+              </Button>
+            </Link>
           </CardContent>
         </Card>
 

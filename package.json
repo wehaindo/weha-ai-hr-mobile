@@ -9,6 +9,7 @@
     "dev": "next dev --port 3180",
     "build": "next build",
     "preview": "npx --yes serve out -l 3180",
+    "pwa:icons": "node scripts/generate-pwa-icons.mjs",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
     "electron:compile": "tsc -p electron/tsconfig.json",
