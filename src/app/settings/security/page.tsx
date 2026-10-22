@@ -6,9 +6,10 @@
 
 import { useEffect, useState } from 'react';
 import { toast } from '@/components/ui/toast';
+import deviceConfig from '@/device.config';
 import { useAuthStore } from '@/stores/auth';
-import { useSettingsGroup } from '@/components/settings/use-settings';
-import { SettingsCard, SettingsNumberField, SaveButton } from '@/components/settings/fields';
+import { useSettingsGroup, useSetting } from '@/components/settings/use-settings';
+import { SettingsCard, SettingsField, SettingsNumberField, SaveButton } from '@/components/settings/fields';
 
 const DEFAULTS = {
   maxLoginAttempts: 5,
@@ -18,6 +19,12 @@ const DEFAULTS = {
 
 export default function SecuritySettingsPage() {
   const { values, set, save } = useSettingsGroup('security', DEFAULTS);
+  const {
+    value: storedTenantSlug,
+    setValue: persistTenantSlug,
+    loading: slugLoading,
+  } = useSetting<string>('auth.mobileTenantSlug', '');
+  const [tenantSlug, setTenantSlug] = useState('');
   const [busy, setBusy] = useState(false);
   const configureLockout = useAuthStore((s) => s.configureLockout);
 
@@ -26,10 +33,17 @@ export default function SecuritySettingsPage() {
     configureLockout(values.maxLoginAttempts, 30000);
   }, [values.maxLoginAttempts, configureLockout]);
 
+  // Seed the local input from the persisted value once loading finishes
+  // (writes happen on save, not per keystroke).
+  useEffect(() => {
+    if (!slugLoading) setTenantSlug(storedTenantSlug ?? '');
+  }, [slugLoading, storedTenantSlug]);
+
   async function handleSave(): Promise<void> {
     setBusy(true);
     try {
       await save();
+      await persistTenantSlug(tenantSlug.trim());
       configureLockout(values.maxLoginAttempts, 30000);
       toast.add({ title: 'Security settings saved', type: 'success' });
     } catch (err) {
@@ -70,6 +84,22 @@ export default function SecuritySettingsPage() {
           min={0}
           testId="security-auto-lock"
         />
+      </SettingsCard>
+
+      <SettingsCard
+        title="Mobile login (WEHA account)"
+        description="Sign in against weha-framework — requires the framework to be reachable"
+      >
+        <SettingsField
+          label="Tenant slug"
+          value={tenantSlug}
+          onChange={setTenantSlug}
+          placeholder="leave empty for single-tenant"
+          testId="security-mobile-tenant"
+        />
+        <p className="text-xs text-muted-foreground">
+          Framework URL: <span className="font-mono">{deviceConfig.erp.baseUrl}</span>
+        </p>
       </SettingsCard>
 
       <div className="flex justify-end">

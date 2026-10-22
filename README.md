@@ -88,4 +88,5 @@ Change it immediately on a real device.
 
 - [Architecture](docs/ARCHITECTURE.md) — bridge, database, sync, auth, theming
 - [Creating a device app](docs/CREATING-A-DEVICE-APP.md) — step-by-step extension guide
+- [Mobile auth](docs/MOBILE-AUTH.md) — WEHA-account login (password/OTP), setup links, env config
 - [AGENTS.md](AGENTS.md) — conventions for AI agents working in this repo

@@ -5,10 +5,12 @@ import { useRouter } from 'next/navigation';
 import { useBridge } from '@/platform';
 import deviceConfig from '@/device.config';
 import { useAuthStore } from '@/stores/auth';
-import { authenticate, authenticateWithCredentials, fetchActiveUsers, type LoginUser } from '../actions';
+import { authenticate, authenticateWithCredentials, authenticateWithMobile, authenticateWithMobileOtp, fetchActiveUsers, requestMobileLoginCode, type LoginUser } from '../actions';
+import { MobileAuthError } from '@/integration/mobile-auth/client';
 import UserAvatar from './UserAvatar';
 import PinInput from './PinInput';
 import PasswordLogin from './PasswordLogin';
+import MobileLogin, { type MobileLoginView } from './MobileLogin';
 
 export default function LoginScreen() {
   const bridge = useBridge();
@@ -20,8 +22,10 @@ export default function LoginScreen() {
   const [users, setUsers] = useState<LoginUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<LoginUser | null>(null);
-  const [mode, setMode] = useState<'pin' | 'password'>('pin');
+  const [mode, setMode] = useState<'pin' | 'password' | 'mobile'>('pin');
+  const [mobileView, setMobileView] = useState<MobileLoginView>('password');
   const [pwBusy, setPwBusy] = useState(false);
+  const [mobileBusy, setMobileBusy] = useState(false);
   const [error, setError] = useState<string | undefined>(undefined);
   const [lockSeconds, setLockSeconds] = useState(0);
 
@@ -90,7 +94,62 @@ export default function LoginScreen() {
     [bridge, login, incrementAttempts, isLocked, router]
   );
 
-  function switchMode(next: 'pin' | 'password'): void {
+  const handleMobileSubmit = useCallback(
+    async (email: string, password: string) => {
+      setError(undefined);
+      try {
+        if (isLocked()) {
+          setLockSeconds(Math.ceil(30));
+          return;
+        }
+        setMobileBusy(true);
+        const user = await authenticateWithMobile(bridge, email, password);
+        login(user);
+        router.push('/dashboard');
+      } catch (err) {
+        incrementAttempts();
+        if (err instanceof MobileAuthError && err.code === 'otp_required') {
+          setMobileView('otp');
+        }
+        setError(err instanceof Error ? err.message : 'Login failed');
+      } finally {
+        setMobileBusy(false);
+      }
+    },
+    [bridge, login, incrementAttempts, isLocked, router]
+  );
+
+  const handleMobileOtpSubmit = useCallback(
+    async (email: string, otp: string) => {
+      setError(undefined);
+      try {
+        if (isLocked()) {
+          setLockSeconds(Math.ceil(30));
+          return;
+        }
+        setMobileBusy(true);
+        const user = await authenticateWithMobileOtp(bridge, email, otp);
+        login(user);
+        router.push('/dashboard');
+      } catch (err) {
+        incrementAttempts();
+        setError(err instanceof Error ? err.message : 'Login failed');
+      } finally {
+        setMobileBusy(false);
+      }
+    },
+    [bridge, login, incrementAttempts, isLocked, router]
+  );
+
+  const handleRequestCode = useCallback(
+    async (email: string) => {
+      const result = await requestMobileLoginCode(bridge, email);
+      return { devCode: result.devCode };
+    },
+    [bridge]
+  );
+
+  function switchMode(next: 'pin' | 'password' | 'mobile'): void {
     setMode(next);
     setError(undefined);
   }
@@ -101,7 +160,11 @@ export default function LoginScreen() {
         <div className="mb-8 text-center">
           <h1 className="text-3xl font-bold tracking-tight">{deviceConfig.brand.sidebarTitle}</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            {mode === 'pin' ? 'Select your account to sign in' : 'Sign in with your username and password'}
+            {mode === 'pin'
+              ? 'Select your account to sign in'
+              : mode === 'password'
+                ? 'Sign in with your username and password'
+                : 'Sign in with your WEHA account'}
           </p>
         </div>
 
@@ -111,6 +174,17 @@ export default function LoginScreen() {
             onCancel={() => switchMode('pin')}
             error={error}
             busy={pwBusy}
+          />
+        ) : mode === 'mobile' ? (
+          <MobileLogin
+            view={mobileView}
+            onViewChange={setMobileView}
+            onSubmit={handleMobileSubmit}
+            onSubmitOtp={handleMobileOtpSubmit}
+            onRequestCode={handleRequestCode}
+            onCancel={() => switchMode('pin')}
+            error={error}
+            busy={mobileBusy}
           />
         ) : loading ? (
           <div className="flex justify-center py-12">
@@ -147,7 +221,7 @@ export default function LoginScreen() {
         )}
 
         {mode === 'pin' && (
-          <div className="mt-6 text-center">
+          <div className="mt-6 flex flex-col items-center gap-3">
             <button
               type="button"
               className="text-sm text-muted-foreground underline underline-offset-4 hover:text-foreground"
@@ -155,6 +229,27 @@ export default function LoginScreen() {
               data-testid="toggle-password-login"
             >
               Sign in with username &amp; password
+            </button>
+            <button
+              type="button"
+              className="text-sm text-muted-foreground underline underline-offset-4 hover:text-foreground"
+              onClick={() => switchMode('mobile')}
+              data-testid="toggle-mobile-login"
+            >
+              Sign in with WEHA account
+            </button>
+          </div>
+        )}
+
+        {mode === 'password' && (
+          <div className="mt-6 text-center">
+            <button
+              type="button"
+              className="text-sm text-muted-foreground underline underline-offset-4 hover:text-foreground"
+              onClick={() => switchMode('mobile')}
+              data-testid="toggle-mobile-login"
+            >
+              Sign in with WEHA account
             </button>
           </div>
         )}

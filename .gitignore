@@ -47,6 +47,7 @@ yarn-error.log*
 
 # env files (keep secrets out — device.config.ts must stay client-safe)
 .env*
+!.env.example
 
 # vercel
 .vercel

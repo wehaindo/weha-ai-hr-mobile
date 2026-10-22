@@ -3,6 +3,14 @@
 import type { DeviceBridge } from '@/platform';
 import { verifyPin, verifyPassword } from './crypto';
 import type { SessionUser } from '@/stores/auth';
+import {
+  createMobileAuthClient,
+  type MobileIdentity,
+  type MobileLoginResult,
+  type MobileSessionTokens,
+} from '@/integration/mobile-auth/client';
+import { getMobileTenantSlug, persistMobileTokens } from './mobile-session';
+import { SYSTEM_ROLES } from './permissions';
 
 export interface LoginUser {
   id: string;
@@ -113,4 +121,78 @@ export async function authenticateWithCredentials(
     avatar_color: user.avatar_color ?? undefined,
     permissions,
   };
+}
+
+// ---------------------------------------------------------------------------
+// Mobile auth — sign in with a weha-framework account (PortalUser identity).
+// Session-only: no local `users` row is created; permissions are fixed to the
+// operator set at login time.
+// ---------------------------------------------------------------------------
+
+const MOBILE_SESSION_ROLE = 'operator';
+
+function mobilePermissions(): string[] {
+  const role = SYSTEM_ROLES.find((r) => r.id === MOBILE_SESSION_ROLE);
+  return [...(role?.permissions ?? [])];
+}
+
+function mobileSessionUser(identity: MobileIdentity): SessionUser {
+  const sub = identity.userId ?? identity.portalUserId ?? identity.employeeId ?? identity.email;
+  return {
+    id: `mobile:${sub}`,
+    display_name: identity.name ?? identity.email,
+    role: MOBILE_SESSION_ROLE,
+    permissions: mobilePermissions(),
+    authSource: 'mobile',
+  };
+}
+
+async function completeMobileLogin(
+  bridge: DeviceBridge,
+  tokens: MobileSessionTokens,
+  identity: MobileIdentity
+): Promise<SessionUser> {
+  await persistMobileTokens(bridge, tokens, {
+    email: identity.email,
+    tenant_slug: identity.tenantSlug,
+    access_token: tokens.accessToken,
+    refresh_token: tokens.refreshToken,
+    expires_at: null,
+    identity_json: JSON.stringify(identity),
+  });
+  return mobileSessionUser(identity);
+}
+
+/** Sign in with email + password against weha-framework `/api/mobile/v1/auth/login`. */
+export async function authenticateWithMobile(
+  bridge: DeviceBridge,
+  email: string,
+  password: string
+): Promise<SessionUser> {
+  const client = await createMobileAuthClient(bridge);
+  const tenantSlug = await getMobileTenantSlug(bridge);
+  const result: MobileLoginResult = await client.login(email.trim(), password, tenantSlug || undefined);
+  return completeMobileLogin(bridge, result, result.user);
+}
+
+/** Sign in with a one-time email code (`/auth/otp/verify`). */
+export async function authenticateWithMobileOtp(
+  bridge: DeviceBridge,
+  email: string,
+  otp: string
+): Promise<SessionUser> {
+  const client = await createMobileAuthClient(bridge);
+  const tenantSlug = await getMobileTenantSlug(bridge);
+  const result: MobileLoginResult = await client.verifyOtp(email.trim(), otp, tenantSlug || undefined);
+  return completeMobileLogin(bridge, result, result.user);
+}
+
+/** Request a login code. Returns `devCode` in non-production (echoed by the framework). */
+export async function requestMobileLoginCode(
+  bridge: DeviceBridge,
+  email: string
+): Promise<{ sent: true; devCode?: string }> {
+  const client = await createMobileAuthClient(bridge);
+  const tenantSlug = await getMobileTenantSlug(bridge);
+  return client.requestOtp(email.trim(), tenantSlug || undefined);
 }
