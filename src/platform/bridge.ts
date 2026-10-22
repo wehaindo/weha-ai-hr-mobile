@@ -111,6 +111,8 @@ export interface DeviceBridge {
     execute(sql: string, params?: unknown[]): Promise<void>;
     /** Atomic multi-statement write (no interactive reads inside). */
     batch(statements: SqlStatement[]): Promise<void>;
+    /** Persist pending writes immediately (durable before navigation/reload). */
+    flush(): Promise<void>;
   };
   kv: {
     get<T = unknown>(key: string): Promise<T | null>;

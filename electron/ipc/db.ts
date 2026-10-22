@@ -19,4 +19,8 @@ export function registerDbIpc(getEngine: () => DatabaseEngine): void {
     getEngine().batch(statements);
     broadcast('db:changed', {});
   });
+
+  ipcMain.handle('db:flush', async () => {
+    await getEngine().flush();
+  });
 }

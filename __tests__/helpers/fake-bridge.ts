@@ -46,6 +46,9 @@ export async function createFakeBridge(): Promise<FakeBridgeHandle> {
         engine.batch(statements);
         emit('db:changed', {});
       },
+      flush: async () => {
+        await engine.flush();
+      },
     },
 
     kv: {

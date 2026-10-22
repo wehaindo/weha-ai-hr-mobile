@@ -76,6 +76,25 @@ export async function createEngine(
     }, SAVE_DEBOUNCE_MS);
   };
 
+  // Persist pending writes before the page goes away: the debounce timer dies
+  // with the page context, so a reload right after a write (e.g. the
+  // mobile_auth_sessions row written at login) would otherwise lose it.
+  if (typeof window !== 'undefined' && typeof document !== 'undefined') {
+    const flushNow = () => {
+      if (timer) {
+        clearTimeout(timer);
+        timer = null;
+      }
+      persist().catch(() => {
+        /* best-effort during unload */
+      });
+    };
+    window.addEventListener('pagehide', flushNow);
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'hidden') flushNow();
+    });
+  }
+
   const engine: DatabaseEngine = {
     query<T = Record<string, unknown>>(sql: string, params: unknown[] = []): T[] {
       const stmt = db.prepare(sql);
