@@ -25,8 +25,10 @@ test.describe('ESS dashboard', () => {
     await expect(shortcuts).toBeVisible();
     await expect(shortcuts.getByTestId('service-profile').locator('xpath=ancestor::a')).toBeVisible();
     await expect(shortcuts.getByTestId('service-attendance').locator('xpath=ancestor::a')).toBeVisible();
-    await expect(shortcuts.getByTestId('service-payslips').locator('xpath=ancestor::a')).toHaveCount(0);
-    await expect(shortcuts.getByTestId('service-payslips')).toContainText('Coming later');
+    await expect(shortcuts.getByTestId('service-payslips').locator('xpath=ancestor::a')).toBeVisible();
+
+    // Phase 5 — payroll widget present (honest error state without a payroll mock)
+    await expect(page.getByTestId('widget-payroll-summary')).toBeVisible();
 
     // BRD §4.1B — future widgets clearly marked, zero fabricated data
     const unavailable = page.getByTestId('widget-unavailable');

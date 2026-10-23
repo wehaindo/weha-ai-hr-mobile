@@ -19,7 +19,7 @@ export const ESS_SERVICES: EssServiceDef[] = [
   { id: 'attendance', label: 'Attendance', icon: CalendarCheck, href: '/attendance', status: 'available', permission: 'ess.use' },
   { id: 'leave', label: 'Leave', icon: CalendarDays, href: '/leave', status: 'available', permission: 'ess.use' },
   { id: 'requests', label: 'Requests', icon: Inbox, href: '/requests', status: 'available', permission: 'ess.use' },
-  { id: 'payslips', label: 'Payslips', icon: Wallet, status: 'coming' },
+  { id: 'payslips', label: 'Payslips', icon: Wallet, href: '/payslips', status: 'available', permission: 'ess.use' },
   { id: 'documents', label: 'Employment documents', icon: FileText, status: 'coming' },
   { id: 'announcements', label: 'Announcements', icon: Megaphone, status: 'coming' },
 ];

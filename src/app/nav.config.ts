@@ -12,6 +12,7 @@ import {
   Settings,
   ShieldCheck,
   User,
+  Wallet,
   type LucideIcon,
 } from 'lucide-react';
 import deviceConfig, { type ModuleKey } from '@/device.config';
@@ -37,6 +38,7 @@ export const NAV_ITEMS: NavItem[] = [
   { label: 'Requests', href: '/requests', icon: Inbox, permission: 'ess.use' },
   { label: 'Profile', href: '/profile', icon: User, permission: 'ess.use' },
   { label: 'Approvals', href: '/approvals', icon: ShieldCheck, permission: 'ess.approve' },
+  { label: 'Payslips', href: '/payslips', icon: Wallet, permission: 'ess.use' },
   { label: 'Transactions', href: '/transactions', icon: Receipt, permission: 'transactions.use' },
   { label: 'Sync', href: '/sync', icon: RefreshCw, permission: 'sync.manage', module: 'sync' },
   { label: 'Diagnostics', href: '/diagnostics', icon: Activity, permission: 'ess.use' },

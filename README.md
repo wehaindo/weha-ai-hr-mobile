@@ -104,4 +104,6 @@ Change it immediately on a real device.
 - [ESS attendance contract](docs/ESS-ATTENDANCE-CONTRACT.md) — attendance backend interface the client is built against
 - [ESS Phase 4](docs/ESS-PHASE4.md) — leave, permission, overtime & correction requests + approval inbox (acceptance evidence)
 - [ESS requests contract](docs/ESS-REQUESTS-CONTRACT.md) — HR requests/approvals backend interface the client is built against
+- [ESS Phase 5](docs/ESS-PHASE5.md) — payroll dashboard, payslips, tax & BPJS, inquiries (acceptance evidence)
+- [ESS payroll contract](docs/ESS-PAYROLL-CONTRACT.md) — payroll backend interface (weha-ai-hrd) the client is built against
 - [AGENTS.md](AGENTS.md) — conventions for AI agents working in this repo

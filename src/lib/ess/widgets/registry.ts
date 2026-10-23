@@ -8,6 +8,7 @@ import type { EssProfileState } from '@/hooks/useEssProfile';
 import { EmployeeSummaryWidget } from '@/components/ess/widgets/employee-summary-widget';
 import { ServiceShortcutsWidget } from '@/components/ess/widgets/service-shortcuts-widget';
 import { RequestsSummaryWidget } from '@/components/ess/widgets/requests-summary-widget';
+import { PayrollSummaryWidget } from '@/components/ess/widgets/payroll-summary-widget';
 import { UnavailableWidget } from '@/components/ess/widgets/unavailable-widget';
 
 export type { EssServiceDef } from './services';
@@ -66,6 +67,15 @@ export const ESS_WIDGET_DEFS: EssWidgetDef[] = [
     enabled: true,
     permission: 'ess.use',
     component: RequestsSummaryWidget,
+  },
+  {
+    id: 'payroll-summary',
+    title: 'Payroll',
+    type: 'summary',
+    order: 45,
+    enabled: true,
+    permission: 'ess.use',
+    component: PayrollSummaryWidget,
   },
 ];
 

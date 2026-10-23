@@ -10,6 +10,7 @@ describe('ESS widget registry', () => {
       'service-shortcuts',
       'announcements',
       'requests-summary',
+      'payroll-summary',
     ]);
     const orders = widgets.map((w) => w.order);
     expect([...orders].sort((a, b) => a - b)).toEqual(orders);
@@ -48,7 +49,7 @@ describe('ESS service shortcuts', () => {
   });
 
   it('links only to routes that exist in the app', () => {
-    const knownRoutes = new Set(['/profile', '/attendance', '/leave', '/requests']);
+    const knownRoutes = new Set(['/profile', '/attendance', '/leave', '/requests', '/payslips']);
     for (const service of ESS_SERVICES) {
       if (service.href) expect(knownRoutes.has(service.href)).toBe(true);
     }

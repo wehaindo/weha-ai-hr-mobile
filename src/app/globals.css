@@ -287,3 +287,24 @@
   --sidebar-primary: oklch(1 0 0);
   --sidebar-border: oklch(1 0 0);
 }
+
+/* Print isolation for the payslip view (BRD §4.2 print-friendly output):
+   only the payslip area prints; app chrome and dialog actions are hidden. */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  .payslip-print-area,
+  .payslip-print-area * {
+    visibility: visible;
+  }
+  .payslip-print-area {
+    position: absolute;
+    inset: 0;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+  .payslip-no-print {
+    display: none !important;
+  }
+}
