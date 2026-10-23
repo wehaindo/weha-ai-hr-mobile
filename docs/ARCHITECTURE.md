@@ -30,6 +30,31 @@
    secrets), by Electron (compiled by `electron/tsconfig.json`), and by
    `capacitor.config.ts`.
 
+## Build targets (feature profiles)
+
+One codebase, four build targets, selected at **build time** by
+`NEXT_PUBLIC_APP_TARGET` (`src/lib/app-target.ts`; the package.json scripts set
+it via `cross-env`, so it is never set by hand in normal use):
+
+| Target       | Profile | Typical use                    |
+| ------------ | ------- | ------------------------------ |
+| `web`        | minimal | Browser / PWA                  |
+| `electron`   | full    | Desktop                        |
+| `cap-mobile` | minimal | Capacitor phone                |
+| `cap-tablet` | full    | Capacitor tablet               |
+
+- Unknown/missing values fall back to `web` (minimal — safe default).
+- The two profiles live in `device.config.ts` (`fullModules` / `minimalModules`);
+  TypeScript enforces the minimal profile covers every module key. To change
+  what a profile ships, edit those two objects — nothing else.
+- Because `NEXT_PUBLIC_*` is inlined by `next build`, each target needs its own
+  build (`npm run build`, `electron:build`, `cap:sync`, `cap:sync:mobile`).
+  A phone and a tablet therefore ship **separate** bundles/APKs — never try to
+  distinguish them at runtime.
+- Consumers just keep reading `deviceConfig.modules.*`; nav items declare a
+  `module`, the sidebar filters on it (`navItemsForTarget`), the shell blocks
+  module-disabled routes, and the settings tabs hide gated tabs.
+
 ## Data flow: a typical mutation
 
 ```
