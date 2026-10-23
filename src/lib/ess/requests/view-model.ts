@@ -46,6 +46,22 @@ export const REQUEST_TYPE_ICON: Record<EssRequestType, LucideIcon> = {
 /** Statuses the employee may cancel from (contract §3.8). */
 export const CANCELLABLE_STATUSES: EssRequestStatus[] = ['SUBMITTED', 'IN_REVIEW', 'RETURNED'];
 
+/** Phase 6 decision actions (contract §4.5) — comments policy per action. */
+export type ApprovalAction = 'APPROVED' | 'REJECTED' | 'RETURNED';
+
+export const APPROVAL_ACTION_LABEL: Record<ApprovalAction, string> = {
+  APPROVED: 'Approve',
+  REJECTED: 'Reject',
+  RETURNED: 'Return for correction',
+};
+
+/** Rejection/return always require a comment (contract §4.5). */
+export function actionRequiresComment(action: ApprovalAction): boolean {
+  return action !== 'APPROVED';
+}
+
+export const OVERDUE_LABEL = 'Overdue';
+
 export function formatDay(iso: string | null | undefined): string {
   if (!iso) return '—';
   const date = new Date(iso);

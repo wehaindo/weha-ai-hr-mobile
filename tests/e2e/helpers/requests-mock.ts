@@ -110,23 +110,34 @@ export interface RequestsMockCalls {
   submits: Array<{ url: string; idempotencyKey: string | null; requestJson: Record<string, unknown> | null; multipart: string }>;
   cancels: Array<{ url: string; body: Record<string, unknown> }>;
   resubmits: Array<{ url: string; multipart: string }>;
-  decisions: Array<{ url: string; body: Record<string, unknown>; authorization: string | null }>;
+  decisions: Array<{ url: string; body: Record<string, unknown>; authorization: string | null; idempotencyKey: string | null }>;
   downloads: number;
+  /** Inbox list requests (path + query) for filter/pagination assertions. */
+  listQueries: string[];
 }
 
 export interface RequestsMockOptions {
   requests?: MockRequestRecord[];
   inbox?: unknown[];
+  /** Override the approval detail projection (contexts, version, …). */
+  approvalDetail?: Record<string, unknown>;
+  /** Delegations served at GET /ess/delegations. */
+  delegations?: unknown[];
+  /** Force every decision to answer 409 version_conflict. */
+  decisionConflict?: boolean;
   /** Override the submit outcome (e.g. force a domain error). */
   submit?: (json: Record<string, unknown>) => { status: number; json: Record<string, unknown> } | null;
 }
 
 export async function mockRequestsApi(page: Page, options: RequestsMockOptions = {}): Promise<{ calls: RequestsMockCalls }> {
-  const calls: RequestsMockCalls = { submits: [], cancels: [], resubmits: [], decisions: [], downloads: 0 };
+  const calls: RequestsMockCalls = { submits: [], cancels: [], resubmits: [], decisions: [], downloads: 0, listQueries: [] };
   const requests = options.requests ?? seedRequests();
   let inbox = options.inbox ?? [
     {
       requestId: 'req-200',
+      recordId: 'ot-200',
+      version: 1,
+      availableActions: ['APPROVED', 'REJECTED', 'RETURNED'],
       requestNo: 'ESS-REQ-2026-000200',
       type: 'OVERTIME',
       employee: { id: 'E2', name: 'Sari Admin', department: 'Operations' },
@@ -136,6 +147,7 @@ export async function mockRequestsApi(page: Page, options: RequestsMockOptions =
       currentStepName: 'Direct manager',
       ageDays: 2,
       hasAttachments: false,
+      overdue: false,
     },
   ];
   let nextId = 300;
@@ -164,16 +176,23 @@ export async function mockRequestsApi(page: Page, options: RequestsMockOptions =
       }
     }
 
-    // Approvals
-    if (url.includes('/ess/approvals/inbox')) {
-      return respond(200, { success: true, data: { requests: inbox } });
-    }
+    // ── Approvals (Phase 6: /ess/approvals + filters + cursor) ────────────
     if (url.includes('/ess/approvals/') && url.includes('/decision')) {
       const body = (request.postDataJSON() ?? {}) as Record<string, unknown>;
-      calls.decisions.push({ url, body, authorization: auth });
+      calls.decisions.push({
+        url,
+        body,
+        authorization: auth,
+        idempotencyKey: request.headers()['idempotency-key'] ?? null,
+      });
       const requestId = url.match(/approvals\/([^/]+)\/decision/)?.[1] ?? '';
       const action = String(body.action ?? 'APPROVED');
-      inbox = (inbox as Array<{ requestId: string }>).filter((item) => item.requestId !== requestId);
+      const inboxList = inbox as Array<Record<string, unknown> & { requestId: string }>;
+      const item = inboxList.find((entry) => entry.requestId === requestId);
+      if (options.decisionConflict || (body.expectedVersion !== undefined && item && item.version !== body.expectedVersion)) {
+        return respond(409, { success: false, error: 'version_conflict', message: 'This request changed.' });
+      }
+      inbox = inboxList.filter((entry) => entry.requestId !== requestId);
       const target = requests.find((r) => r.id === requestId);
       if (target) {
         target.status = action === 'APPROVED' ? 'APPROVED' : action === 'RETURNED' ? 'RETURNED' : 'REJECTED';
@@ -185,19 +204,79 @@ export async function mockRequestsApi(page: Page, options: RequestsMockOptions =
       }
       return respond(200, {
         success: true,
-        data: { requestId, action, recordStatus: target?.status ?? 'APPROVED', nextStepName: null },
+        data: {
+          requestId,
+          action,
+          recordStatus: target?.status ?? action,
+          version: (item?.version as number) ?? 1,
+          nextStepName: null,
+        },
       });
     }
+
+    if (url.includes('/ess/delegations')) {
+      return respond(200, {
+        success: true,
+        data: {
+          delegations: options.delegations ?? [
+            {
+              id: 'del-1',
+              direction: 'INBOUND',
+              counterpart: { id: 'e-9', name: 'Pak Boss' },
+              startsAt: '2026-11-01T00:00:00.000Z',
+              endsAt: '2026-11-07T23:59:59.000Z',
+              formTypes: ['LEAVE'],
+              isActive: true,
+            },
+          ],
+        },
+      });
+    }
+
+    // inbox list — server-side filters + opaque cursor (contract §4.3)
+    if (/\/ess\/approvals(\?|$)/.test(url)) {
+      const parsedUrl = new URL(url);
+      calls.listQueries.push(`${parsedUrl.pathname}${parsedUrl.search}`);
+      const list = inbox as Array<Record<string, unknown>>;
+      const formType = parsedUrl.searchParams.get('formType');
+      const overdueOnly = parsedUrl.searchParams.get('overdue') === 'true';
+      const q = (parsedUrl.searchParams.get('q') ?? '').toLowerCase();
+      const cursor = parsedUrl.searchParams.get('cursor');
+
+      let filtered = list.filter((item) => {
+        if (formType && item.type !== formType) return false;
+        if (overdueOnly && item.overdue !== true) return false;
+        if (q) {
+          const haystack = `${String((item.employee as { name?: string })?.name ?? '')} ${item.requestNo}`.toLowerCase();
+          if (!haystack.includes(q)) return false;
+        }
+        return true;
+      });
+      let nextCursor: string | null = null;
+      if (cursor === 'page-2') {
+        filtered = filtered.slice(1);
+      } else if (filtered.length > 1) {
+        filtered = filtered.slice(0, 1);
+        nextCursor = 'page-2';
+      }
+      return respond(200, { success: true, data: { requests: filtered, nextCursor } });
+    }
+
     if (url.includes('/ess/approvals/')) {
       const requestId = url.match(/approvals\/([^/?]+)$/)?.[1] ?? '';
-      const inboxItem = (inbox as Array<Record<string, unknown> & { requestId: string; requestNo: string }>).find(
-        (item) => item.requestId === requestId
-      );
+      const inboxList = inbox as Array<Record<string, unknown> & { requestId: string; requestNo: string }>;
+      const inboxItem = inboxList.find((item) => item.requestId === requestId);
       if (inboxItem) {
         // Serve the detail from the inbox item (it is pending, not yet in history)
         return respond(200, {
           success: true,
           data: {
+            ...{
+              recordId: inboxItem.recordId ?? `${inboxItem.requestId}-record`,
+              version: inboxItem.version ?? 1,
+              availableActions: inboxItem.availableActions ?? ['APPROVED', 'REJECTED', 'RETURNED'],
+            },
+            ...(options.approvalDetail ?? {}),
             request: {
               id: inboxItem.requestId,
               requestNo: inboxItem.requestNo,
@@ -211,7 +290,11 @@ export async function mockRequestsApi(page: Page, options: RequestsMockOptions =
               currentStepName: inboxItem.currentStepName ?? null,
               returnReason: null,
               attachmentCount: inboxItem.hasAttachments ? 1 : 0,
+              attachments: inboxItem.hasAttachments
+                ? [{ id: 'att-200', fileName: 'surat.pdf', mimeType: 'application/pdf', size: 1234 }]
+                : [],
               timeline: [],
+              ...(options.approvalDetail?.request as Record<string, unknown> | undefined),
             },
             employee: inboxItem.employee,
             previousRequestCount: 4,

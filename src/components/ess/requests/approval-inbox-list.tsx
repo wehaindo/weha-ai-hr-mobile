@@ -46,12 +46,18 @@ export function ApprovalInboxList({
                   </span>
                 </span>
                 <span className="block truncate text-xs text-muted-foreground">
+                  {item.employee.department ? `${item.employee.department} · ` : ''}
                   {formatRequestPeriod(item.type, item.period ?? null)} · submitted {formatDateTime(item.submittedAt)}
                   {item.currentStepName ? ` · step: ${item.currentStepName}` : ''}
                 </span>
                 {item.reason && <span className="block truncate text-xs text-muted-foreground">“{item.reason}”</span>}
               </span>
               <span className="flex shrink-0 flex-col items-end gap-1">
+                {item.overdue && (
+                  <Badge variant="destructive" data-testid="approval-overdue">
+                    Overdue
+                  </Badge>
+                )}
                 <Badge variant={item.ageDays >= 3 ? 'destructive' : 'secondary'} data-testid="approval-age">
                   {formatAgeDays(item.ageDays)}
                 </Badge>

@@ -106,4 +106,6 @@ Change it immediately on a real device.
 - [ESS requests contract](docs/ESS-REQUESTS-CONTRACT.md) — HR requests/approvals backend interface the client is built against
 - [ESS Phase 5](docs/ESS-PHASE5.md) — payroll dashboard, payslips, tax & BPJS, inquiries (acceptance evidence)
 - [ESS payroll contract](docs/ESS-PAYROLL-CONTRACT.md) — payroll backend interface (weha-ai-hrd) the client is built against
+- [ESS Phase 6](docs/ESS-PHASE6.md) — manager dashboard, approval inbox, delegation & workflow (acceptance evidence)
+- [ESS manager contract](docs/ESS-MANAGER-CONTRACT.md) — manager/approvals backend interface (weha-ai-hrd, consolidates Phase 3/4 records)
 - [AGENTS.md](AGENTS.md) — conventions for AI agents working in this repo

@@ -86,6 +86,10 @@ export const timelineItemSchema = z.object({
   actorName: z.string().nullable().optional(),
   notes: z.string().nullable().optional(),
   createdAt: z.string(),
+  // Phase 6 audit context (contract §2.3)
+  correlationId: z.string().nullable().optional(),
+  recordVersion: z.coerce.number().nullable().optional(),
+  delegatorId: z.string().nullable().optional(),
 });
 export type EssTimelineItem = z.infer<typeof timelineItemSchema>;
 
@@ -125,6 +129,7 @@ export type EssRequestSummary = z.infer<typeof requestSummarySchema>;
 
 export const inboxItemSchema = z.object({
   requestId: z.string(),
+  recordId: z.string().optional(),
   requestNo: z.string(),
   type: z.enum(ESS_REQUEST_TYPES),
   employee: z.object({
@@ -138,8 +143,58 @@ export const inboxItemSchema = z.object({
   currentStepName: z.string().nullable().optional(),
   ageDays: z.coerce.number(),
   hasAttachments: z.boolean(),
+  overdue: z.boolean().optional(),
+  version: z.coerce.number().optional(),
 });
 export type EssInboxItem = z.infer<typeof inboxItemSchema>;
+
+/** Server-side inbox filters (contract §4.3). */
+export interface ApprovalInboxFilters {
+  formType?: EssRequestType;
+  status?: 'PENDING' | 'COMPLETED' | 'REJECTED' | 'RETURNED';
+  overdue?: boolean;
+  q?: string;
+}
+
+export interface InboxPage {
+  items: EssInboxItem[];
+  nextCursor: string | null;
+}
+
+export const leaveApprovalContextSchema = z.object({
+  leaveType: z.string(),
+  startDate: z.string(),
+  endDate: z.string(),
+  requestedDays: z.coerce.number(),
+  balance: z.object({
+    entitled: z.coerce.number(),
+    used: z.coerce.number(),
+    pending: z.coerce.number(),
+    available: z.coerce.number(),
+  }),
+  overlapping: z.array(
+    z.object({ requestNo: z.string(), start: z.string(), end: z.string(), status: z.string() })
+  ),
+});
+export type LeaveApprovalContext = z.infer<typeof leaveApprovalContextSchema>;
+
+export const correctionApprovalContextSchema = z.object({
+  workDate: z.string(),
+  correctionType: z.string(),
+  before: z.record(z.string(), z.union([z.string(), z.number(), z.null()])).nullable().optional(),
+  after: z.record(z.string(), z.union([z.string(), z.number(), z.null()])).nullable().optional(),
+  attendance: z
+    .object({ status: z.string(), checkIn: z.string().nullable().optional(), checkOut: z.string().nullable().optional() })
+    .nullable()
+    .optional(),
+  originalPunch: z
+    .object({ punchAt: z.string(), punchType: z.string(), source: z.string(), dedupeKey: z.string().nullable().optional() })
+    .nullable()
+    .optional(),
+  schedule: z.object({ shiftName: z.string() }).nullable().optional(),
+  flags: z.array(z.string()).optional(),
+});
+export type CorrectionApprovalContext = z.infer<typeof correctionApprovalContextSchema>;
 
 export const approvalDetailSchema = z.object({
   request: requestSummarySchema,
@@ -149,13 +204,20 @@ export const approvalDetailSchema = z.object({
     department: z.string().nullable().optional(),
   }),
   previousRequestCount: z.coerce.number().optional(),
+  // Phase 6 extensions (contract §4.4)
+  recordId: z.string().optional(),
+  version: z.coerce.number().optional(),
+  availableActions: z.array(z.enum(['APPROVED', 'REJECTED', 'RETURNED'])).optional(),
+  leaveContext: leaveApprovalContextSchema.nullable().optional(),
+  correctionContext: correctionApprovalContextSchema.nullable().optional(),
 });
 export type EssApprovalDetail = z.infer<typeof approvalDetailSchema>;
 
 export const decisionResultSchema = z.object({
   requestId: z.string(),
   action: z.enum(['APPROVED', 'REJECTED', 'RETURNED']),
-  recordStatus: z.enum(ESS_REQUEST_STATUSES),
+  recordStatus: z.string(),
+  version: z.coerce.number().optional(),
   nextStepName: z.string().nullable().optional(),
 });
 export type EssDecisionResult = z.infer<typeof decisionResultSchema>;
@@ -316,10 +378,21 @@ export class EssRequestsApi {
   }
 
   // ── Approvals (manager scope — server-authoritative) ────────────────────
-  async getInbox(formType?: EssRequestType): Promise<EssInboxItem[]> {
-    const qs = formType ? `?formType=${encodeURIComponent(formType)}` : '';
-    const data = await this.core.request<{ requests: unknown }>('GET', `/ess/approvals/inbox${qs}`);
-    return parseListOrThrow(z.array(inboxItemSchema), data.requests, 'Approval inbox');
+  /** FR-602 inbox: server-side filters + cursor pagination (contract §4.3). */
+  async getInbox(filters: ApprovalInboxFilters = {}, cursor?: string): Promise<InboxPage> {
+    const params = new URLSearchParams();
+    if (filters.formType) params.set('formType', filters.formType);
+    if (filters.status) params.set('status', filters.status);
+    if (filters.overdue) params.set('overdue', 'true');
+    if (filters.q) params.set('q', filters.q);
+    if (cursor) params.set('cursor', cursor);
+    const qs = params.toString();
+    const data = await this.core.request<{ requests: unknown; nextCursor?: unknown }>(
+      'GET',
+      `/ess/approvals${qs ? `?${qs}` : ''}`
+    );
+    const items = parseListOrThrow(z.array(inboxItemSchema), data.requests, 'Approval inbox');
+    return { items, nextCursor: typeof data.nextCursor === 'string' ? data.nextCursor : null };
   }
 
   async getApproval(requestId: string): Promise<EssApprovalDetail> {
@@ -330,8 +403,22 @@ export class EssRequestsApi {
     return parseOrThrow(approvalDetailSchema, data, 'Approval detail');
   }
 
-  async decide(requestId: string, decision: { action: DecisionAction; notes?: string }): Promise<EssDecisionResult> {
-    const data = await this.core.request<unknown>('POST', `/ess/approvals/${encodeURIComponent(requestId)}/decision`, decision);
+  /**
+   * Approve / reject / return a pending task (contract §4.5): the caller
+   * supplies a fresh idempotency key per user action and the record version
+   * it reviewed — stale versions surface as `version_conflict` (409).
+   */
+  async decide(
+    requestId: string,
+    decision: { action: DecisionAction; notes?: string; expectedVersion?: number },
+    idempotencyKey?: string
+  ): Promise<EssDecisionResult> {
+    const data = await this.core.request<unknown>(
+      'POST',
+      `/ess/approvals/${encodeURIComponent(requestId)}/decision`,
+      decision,
+      { idempotencyKey }
+    );
     return parseOrThrow(decisionResultSchema, data, 'Decision result');
   }
 }

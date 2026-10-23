@@ -1,5 +1,14 @@
 # ESS Requests API Contract — for the WEHA Framework backend
 
+> **PHASE 6 NOTE (superseding):** The record-model proposals in §2 below are
+> **superseded by `docs/ESS-MANAGER-CONTRACT.md` §1** — the implementation
+> target is `weha-ai-hrd`, reusing its existing `LeaveRequest` /
+> `AttendanceCorrection` tables (no `EssRequest` duplicate), and the
+> approvals endpoints in §4 are **extended there** (pagination, filters,
+> record version + `Idempotency-Key` on decisions, RETURNED action). Read
+> that contract first; endpoint semantics here (multipart submits, inquiry
+> thread, validation rules) remain valid where they do not conflict.
+
 Target implementation: `weha-framework` (read-only for the ESS client team;
 this document is the interface the backend implements separately). Companions:
 `docs/ESS-API-CONTRACT.md` (profile/auth), `docs/ESS-ATTENDANCE-CONTRACT.md`.

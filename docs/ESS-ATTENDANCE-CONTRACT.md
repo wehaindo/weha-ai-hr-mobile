@@ -1,5 +1,13 @@
 # ESS Attendance API Contract — for the WEHA Framework backend
 
+> **PHASE 6 NOTE (superseding):** The request-record models proposed in §2
+> below (`EssRequest` and the per-type request tables) are **superseded by
+> `docs/ESS-MANAGER-CONTRACT.md` §1** — the implementation target is
+> `weha-ai-hrd`, reusing its existing `LeaveRequest` / `AttendanceCorrection`
+> / `AttendancePunch` tables driven through the approval engine. The
+> attendance capture endpoints here (config/worksites/status/events/sync)
+> and their semantics remain valid; only the §2 model proposals change.
+
 Target implementation: `weha-framework` (the repo is **not modified by the ESS
 client team**; this document is the interface the backend implements
 separately). Companion to `docs/ESS-API-CONTRACT.md` (profile/auth) — reuse
