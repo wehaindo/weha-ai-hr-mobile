@@ -21,6 +21,7 @@ export const PERMISSIONS = [
   { id: 'audit.view', label: 'View audit log', category: 'Settings' },
   { id: 'transactions.use', label: 'Record transactions', category: 'Transactions' },
   { id: 'ess.use', label: 'Use employee self-service', category: 'ESS' },
+  { id: 'ess.approve', label: 'Review ESS requests', category: 'ESS' },
 ] as const;
 
 export type PermissionId = (typeof PERMISSIONS)[number]['id'];
@@ -55,9 +56,10 @@ export const SYSTEM_ROLES: RoleSeed[] = [
       'audit.view',
       'transactions.use',
       'ess.use',
+      'ess.approve',
     ],
   },
-  { id: 'operator', name: 'Operator', permissions: ['app.use', 'transactions.use', 'ess.use'] },
+  { id: 'operator', name: 'Operator', permissions: ['app.use', 'transactions.use', 'ess.use', 'ess.approve'] },
 ];
 
 export const DEFAULT_ROLES = SYSTEM_ROLES.map((r) => r.id);

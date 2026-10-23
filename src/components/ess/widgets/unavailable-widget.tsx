@@ -12,7 +12,6 @@ import { Badge } from '@/components/ui/badge';
 export function UnavailableWidget({ title }: EssWidgetProps) {
   const copy: Record<string, string> = {
     Announcements: 'Company announcements will appear here once the announcement service is connected.',
-    'Pending actions': 'Leave, attendance and approval actions will surface here in a later phase.',
   };
 
   return (

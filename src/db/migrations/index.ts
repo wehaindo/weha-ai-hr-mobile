@@ -25,6 +25,7 @@ import { migration0023DatahubEnrollment } from './0023_datahub_enrollment';
 import { migration0024MobileAuth } from './0024_mobile_auth';
 import { migration0025EssPermissions } from './0025_ess_permissions';
 import { migration0026AttendanceQueue } from './0026_attendance_queue';
+import { migration0027EssApprovePermission } from './0027_ess_approve_permission';
 
 // Framework migrations — run on every platform before the app boots.
 // App-specific migrations: append here (create one file per migration).
@@ -55,4 +56,5 @@ export const frameworkMigrations: Migration[] = [
   migration0024MobileAuth,
   migration0025EssPermissions,
   migration0026AttendanceQueue,
+  migration0027EssApprovePermission,
 ];

@@ -7,6 +7,7 @@ import type { ComponentType } from 'react';
 import type { EssProfileState } from '@/hooks/useEssProfile';
 import { EmployeeSummaryWidget } from '@/components/ess/widgets/employee-summary-widget';
 import { ServiceShortcutsWidget } from '@/components/ess/widgets/service-shortcuts-widget';
+import { RequestsSummaryWidget } from '@/components/ess/widgets/requests-summary-widget';
 import { UnavailableWidget } from '@/components/ess/widgets/unavailable-widget';
 
 export type { EssServiceDef } from './services';
@@ -58,13 +59,13 @@ export const ESS_WIDGET_DEFS: EssWidgetDef[] = [
     component: UnavailableWidget,
   },
   {
-    id: 'pending-actions',
-    title: 'Pending actions',
-    type: 'placeholder',
+    id: 'requests-summary',
+    title: 'My requests',
+    type: 'summary',
     order: 40,
     enabled: true,
     permission: 'ess.use',
-    component: UnavailableWidget,
+    component: RequestsSummaryWidget,
   },
 ];
 

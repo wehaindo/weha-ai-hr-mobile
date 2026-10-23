@@ -102,4 +102,6 @@ Change it immediately on a real device.
 - [ESS API contract](docs/ESS-API-CONTRACT.md) — backend interface the ESS client is built against
 - [ESS Phase 3](docs/ESS-PHASE3.md) — device-based attendance: GPS + QR, offline queue (acceptance evidence)
 - [ESS attendance contract](docs/ESS-ATTENDANCE-CONTRACT.md) — attendance backend interface the client is built against
+- [ESS Phase 4](docs/ESS-PHASE4.md) — leave, permission, overtime & correction requests + approval inbox (acceptance evidence)
+- [ESS requests contract](docs/ESS-REQUESTS-CONTRACT.md) — HR requests/approvals backend interface the client is built against
 - [AGENTS.md](AGENTS.md) — conventions for AI agents working in this repo

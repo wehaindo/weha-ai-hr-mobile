@@ -17,9 +17,12 @@ afterEach(() => {
 });
 
 describe('nav.config build-target gating', () => {
-  it('shows all framework nav items on electron', async () => {
-    const { navItemsForTarget } = await loadNav('electron');
-    expect(navItemsForTarget().map((i) => i.href)).toEqual(['/dashboard', '/transactions', '/sync', '/settings']);
+  it('shows all nav items on electron (full profile, no module filtering)', async () => {
+    const nav = await loadNav('electron');
+    // Full target: every declared item survives — framework entries and this
+    // app's ESS additions alike (apps extend NAV_ITEMS by design).
+    expect(nav.navItemsForTarget().map((i) => i.href)).toEqual(nav.NAV_ITEMS.map((i) => i.href));
+    expect(nav.navItemsForTarget().map((i) => i.href)).toContain('/attendance');
   });
 
   it('still shows sync on the minimal profile (sync module stays on)', async () => {

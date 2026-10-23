@@ -9,7 +9,7 @@ describe('ESS widget registry', () => {
       'employee-summary',
       'service-shortcuts',
       'announcements',
-      'pending-actions',
+      'requests-summary',
     ]);
     const orders = widgets.map((w) => w.order);
     expect([...orders].sort((a, b) => a - b)).toEqual(orders);

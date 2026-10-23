@@ -10,6 +10,7 @@ import {
   Receipt,
   RefreshCw,
   Settings,
+  ShieldCheck,
   User,
   type LucideIcon,
 } from 'lucide-react';
@@ -35,6 +36,7 @@ export const NAV_ITEMS: NavItem[] = [
   { label: 'Leave', href: '/leave', icon: CalendarDays, permission: 'ess.use' },
   { label: 'Requests', href: '/requests', icon: Inbox, permission: 'ess.use' },
   { label: 'Profile', href: '/profile', icon: User, permission: 'ess.use' },
+  { label: 'Approvals', href: '/approvals', icon: ShieldCheck, permission: 'ess.approve' },
   { label: 'Transactions', href: '/transactions', icon: Receipt, permission: 'transactions.use' },
   { label: 'Sync', href: '/sync', icon: RefreshCw, permission: 'sync.manage', module: 'sync' },
   { label: 'Diagnostics', href: '/diagnostics', icon: Activity, permission: 'ess.use' },

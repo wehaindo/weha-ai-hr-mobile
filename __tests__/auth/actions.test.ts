@@ -48,7 +48,7 @@ describe('auth actions', () => {
   it('fetchPermissions reads the role map', async () => {
     const { bridge } = await createFakeBridge();
     const perms = await fetchPermissions(bridge, 'operator');
-    expect([...perms].sort()).toEqual(['app.use', 'ess.use', 'transactions.use']);
+    expect([...perms].sort()).toEqual(['app.use', 'ess.approve', 'ess.use', 'transactions.use']);
   });
 
   it('verifyPin works against the seeded bcrypt hash', async () => {
