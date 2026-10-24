@@ -1,6 +1,5 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
 import { LogOutIcon } from 'lucide-react';
 import { useAuthStore, type SessionUser } from '@/stores/auth';
 import { Button } from '@/components/ui/button';
@@ -14,37 +13,15 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import UserAvatar from '@/auth/components/UserAvatar';
-import { useBridge } from '@/platform';
-import { clearMobileSession, loadMobileSession } from '@/auth/mobile-session';
-import { createMobileAuthClient } from '@/integration/mobile-auth/client';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import ThemeToggle from './theme-toggle';
 import DisplayToggles from './display-toggles';
 import WindowControls from './window-controls';
 import SyncIndicator from './sync-indicator';
+import { useLogout } from '@/hooks/use-logout';
 
 function UserMenu({ user }: { user: SessionUser }) {
-  const router = useRouter();
-  const bridge = useBridge();
-  const logout = useAuthStore((s) => s.logout);
-
-  async function handleLogout(): Promise<void> {
-    if (user.authSource === 'mobile') {
-      try {
-        const session = await loadMobileSession(bridge);
-        if (session) {
-          const client = await createMobileAuthClient(bridge);
-          // Revocation is idempotent server-side; ignore failures (offline).
-          await client.logout(session.refresh_token).catch(() => undefined);
-        }
-        await clearMobileSession(bridge);
-      } catch {
-        /* best effort — local logout proceeds regardless */
-      }
-    }
-    logout();
-    router.replace('/');
-  }
+  const { handleLogout } = useLogout();
 
   return (
     <DropdownMenu>

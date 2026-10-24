@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { Inter } from 'next/font/google';
 import deviceConfig from '@/device.config';
 import Providers from './providers';
@@ -11,6 +11,10 @@ export const metadata: Metadata = {
   title: deviceConfig.appName,
   description: 'Offline-first device application',
 };
+
+// viewport-fit=cover lets the bottom navigator extend into the display cutout
+// area on Capacitor (notch / home indicator), using safe-area-inset padding.
+export const viewport: Viewport = { viewportFit: 'cover' };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
