@@ -6,20 +6,24 @@ import { useOnlineStatus } from '@/hooks/useOnlineStatus';
 import { useSyncStore } from '@/sync/sync-store';
 import { cn } from '@/lib/utils';
 
-export default function SyncIndicator() {
+/** Current sync/online state — shared by the header indicator and the bottom-nav badge. */
+export function useSyncState(): { icon: typeof CloudOffIcon; className: string; label: string } {
   const { isOnline } = useOnlineStatus();
   const running = useSyncStore((s) => s.running);
   const erpReachable = useSyncStore((s) => s.erpReachable);
   const pending = useSyncStore((s) => s.stats.pending + s.stats.failed);
 
-  const state = !isOnline
+  return !isOnline
     ? { icon: CloudOffIcon, className: 'text-destructive', label: 'Offline' }
     : running
       ? { icon: RefreshCwIcon, className: 'text-primary animate-spin', label: 'Syncing' }
       : erpReachable === false || pending > 0
         ? { icon: CloudCogIcon, className: 'text-amber-500', label: `${pending} queued` }
         : { icon: CloudCheckIcon, className: 'text-emerald-500', label: 'Synced' };
+}
 
+export default function SyncIndicator() {
+  const state = useSyncState();
   const Icon = state.icon;
 
   return (

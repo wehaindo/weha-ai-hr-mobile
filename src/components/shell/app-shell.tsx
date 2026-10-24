@@ -9,6 +9,9 @@ import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar';
 import AppSidebar from './app-sidebar';
 import DesktopHeader from './desktop-header';
 import TouchKeyboard from './touch-keyboard-gate';
+import BottomNav from './bottom-nav';
+import ProfileSheet from './profile-sheet';
+import { useBottomNav } from '@/hooks/use-bottom-nav';
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -16,6 +19,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const can = useAuthStore((s) => s.can);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const bottomNav = useBottomNav();
+  const [profileOpen, setProfileOpen] = useState(false);
 
   // Restore collapsed state persisted by SidebarProvider (sidebar_state cookie).
   useEffect(() => {
@@ -76,6 +81,25 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   }
 
   const navItem = findNavItem(pathname);
+
+  // Bottom navigator layout (web/PWA narrow + Capacitor mobile): no sidebar,
+  // no header — controls live in the Profile tab's bottom sheet.
+  if (bottomNav) {
+    return (
+      <div className="flex h-dvh flex-col overflow-hidden">
+        <div className="flex-1 overflow-auto bg-muted/30" data-testid="main-content">
+          <div className="px-4 pt-4">
+            <h1 className="truncate text-lg font-semibold" data-testid="page-title">
+              {navItem?.label ?? ''}
+            </h1>
+          </div>
+          <div className="p-4">{children}</div>
+        </div>
+        <BottomNav onOpenProfile={() => setProfileOpen(true)} />
+        <ProfileSheet open={profileOpen} onOpenChange={setProfileOpen} />
+      </div>
+    );
+  }
 
   return (
     <SidebarProvider open={sidebarOpen} onOpenChange={setSidebarOpen} className="h-screen overflow-hidden">

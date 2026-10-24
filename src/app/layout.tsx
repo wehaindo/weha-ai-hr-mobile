@@ -29,6 +29,10 @@ export const viewport: Viewport = {
   themeColor: '#f59e0b',
 };
 
+// viewport-fit=cover lets the bottom navigator extend into the display cutout
+// area on Capacitor (notch / home indicator), using safe-area-inset padding.
+export const viewport: Viewport = { viewportFit: 'cover' };
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning>

@@ -13,3 +13,15 @@ export const APP_TARGET: AppTarget =
 
 /** Electron and tablet Capacitor ship the full feature set; web and phones get the lean one. */
 export const isFullTarget = APP_TARGET === 'electron' || APP_TARGET === 'cap-tablet';
+
+/**
+ * True when the shell should use a bottom navigator instead of the sidebar.
+ * - cap-mobile: always bottom nav.
+ * - web/PWA: responsive — bottom nav only on narrow (<768px) viewports, sidebar when wide.
+ * - electron / cap-tablet: always the sidebar.
+ */
+export function bottomNavForTarget(target: AppTarget, isMobileViewport: boolean): boolean {
+  if (target === 'cap-mobile') return true;
+  if (target === 'web') return isMobileViewport;
+  return false;
+}
