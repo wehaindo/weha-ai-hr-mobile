@@ -1,0 +1,448 @@
+{
+  "session": {
+    "accessToken": "dummy-access-token",
+    "refreshToken": "dummy-refresh-token",
+    "tokenType": "Bearer",
+    "expiresIn": 900,
+    "user": {
+      "userId": "u-dummy",
+      "employeeId": "emp-001",
+      "portalUserId": "p-1",
+      "email": "budi@example.com",
+      "name": "Budi Santoso",
+      "tenantSlug": "default"
+    }
+  },
+  "authMe": {
+    "claims": { "userId": "u-dummy", "employeeId": "emp-001", "portalUserId": "p-1", "tenantId": "t-1", "type": "access" },
+    "employee": {
+      "id": "emp-001", "userId": "u-1", "employeeNumber": "EMP-007",
+      "firstName": "Budi", "lastName": "Santoso", "name": "Budi Santoso",
+      "email": "budi@example.com", "phone": "+62 811-1111-111",
+      "status": "ACTIVE", "isActive": true,
+      "companyId": "co-1", "departmentId": "dep-1", "positionId": null, "avatarColor": "#4f46e5"
+    },
+    "portalUser": { "id": "p-1", "email": "budi@example.com", "name": "Budi Santoso", "employeeId": "emp-001", "isActive": true }
+  },
+  "employee": {
+    "id": "emp-001",
+    "employeeNumber": "EMP-007",
+    "firstName": "Budi",
+    "lastName": "Santoso",
+    "name": "Budi Santoso",
+    "email": "budi@example.com",
+    "phone": "+62 811-1111-111",
+    "status": "ACTIVE",
+    "isActive": true,
+    "companyId": "co-1",
+    "departmentId": "dep-1",
+    "positionId": "pos-1",
+    "managerId": null,
+    "position": "Store Supervisor",
+    "hireDate": "2024-01-15T00:00:00.000Z",
+    "birthDate": "1995-06-12T00:00:00.000Z",
+    "gender": "MALE",
+    "maritalStatus": "MARRIED",
+    "avatarColor": "#4f46e5",
+    "company": { "id": "co-1", "name": "WEHA Retail" },
+    "department": { "id": "dep-1", "name": "Operations" },
+    "manager": null
+  },
+  "attendance": {
+    "config": {
+      "methods": ["GPS", "QR"],
+      "policy": {
+        "duplicateIntervalSeconds": 120,
+        "offlineAllowed": true,
+        "geofencePolicy": "REJECT",
+        "maxAccuracyMeters": 100,
+        "lateSyncHours": 24
+      },
+      "serverTime": "2026-10-23T01:00:00.000Z"
+    },
+    "worksites": [
+      {
+        "id": "ws-hq",
+        "name": "WEHA Retail — HQ Jakarta",
+        "storeId": "st-1",
+        "latitude": -6.2088,
+        "longitude": 106.8456,
+        "radiusMeters": 100,
+        "maxAccuracyMeters": 100,
+        "qrEnabled": true,
+        "isPrimary": true,
+        "isActive": true
+      }
+    ],
+    "status": {
+      "current": "NOT_STARTED",
+      "expectedNext": "CHECK_IN",
+      "today": [],
+      "serverTime": "2026-10-23T01:00:00.000Z"
+    },
+    "events": []
+  },
+  "leave": {
+    "types": [
+      { "id": "lt_annual", "code": "ANNUAL", "name": "Annual leave", "unit": "DAYS", "halfDayAllowed": true, "requiresAttachment": false, "consumesBalance": true, "maxConsecutiveDays": 14 },
+      { "id": "lt_sick", "code": "SICK", "name": "Sick leave", "unit": "DAYS", "halfDayAllowed": false, "requiresAttachment": true, "consumesBalance": true, "maxConsecutiveDays": null },
+      { "id": "lt_unpaid", "code": "UNPAID", "name": "Unpaid leave", "unit": "DAYS", "halfDayAllowed": true, "requiresAttachment": false, "consumesBalance": false, "maxConsecutiveDays": null }
+    ],
+    "permissionTypes": [
+      { "code": "sick", "name": "Sick permission", "requiresAttachment": false, "consumesBalance": false, "isTimed": false },
+      { "code": "family", "name": "Family matter", "requiresAttachment": false, "consumesBalance": false, "isTimed": false },
+      { "code": "late", "name": "Late arrival", "requiresAttachment": false, "consumesBalance": false, "isTimed": true },
+      { "code": "emergency", "name": "Emergency absence", "requiresAttachment": false, "consumesBalance": false, "isTimed": false }
+    ],
+    "balances": [
+      { "leaveTypeId": "lt_annual", "code": "ANNUAL", "name": "Annual leave", "unit": "DAYS", "period": "2026", "entitled": 12, "used": 6, "pending": 1, "available": 5 },
+      { "leaveTypeId": "lt_sick", "code": "SICK", "name": "Sick leave", "unit": "DAYS", "period": "2026", "entitled": 10, "used": 1, "pending": 0, "available": 9 },
+      { "leaveTypeId": "lt_unpaid", "code": "UNPAID", "name": "Unpaid leave", "unit": "DAYS", "period": "2026", "entitled": 0, "used": 0, "pending": 0, "available": 0 }
+    ],
+    "preview": { "workingDays": 3, "overlap": false, "available": 5 }
+  },
+  "requests": [
+    {
+      "id": "req-100",
+      "requestNo": "ESS-REQ-2026-000100",
+      "type": "LEAVE",
+      "status": "SUBMITTED",
+      "submittedAt": "2026-10-20T01:00:00.000Z",
+      "decidedAt": null,
+      "reason": "Family holiday in Jogja",
+      "workingDays": 3,
+      "expectedHours": null,
+      "period": { "start": "2026-11-02", "end": "2026-11-04", "halfDay": "NONE" },
+      "payload": { "leaveTypeId": "lt_annual" },
+      "currentStepName": "Direct manager",
+      "approverName": null,
+      "returnReason": null,
+      "attachmentCount": 1,
+      "attachments": [
+        { "id": "att-100", "fileName": "surat-permohonan.pdf", "mimeType": "application/pdf", "size": 184320 }
+      ],
+      "timeline": [
+        { "stepName": "Direct manager", "action": "PENDING", "actorName": null, "notes": null, "createdAt": "2026-10-20T01:00:00.000Z" }
+      ],
+      "originalRequestNo": null
+    },
+    {
+      "id": "req-101",
+      "requestNo": "ESS-REQ-2026-000101",
+      "type": "PERMISSION",
+      "status": "RETURNED",
+      "submittedAt": "2026-10-18T03:00:00.000Z",
+      "decidedAt": "2026-10-19T02:00:00.000Z",
+      "reason": "Doctor visit",
+      "workingDays": null,
+      "expectedHours": null,
+      "period": { "date": "2026-10-24", "startTime": null, "endTime": null, "halfDay": null },
+      "payload": { "permissionCode": "sick" },
+      "currentStepName": "Direct manager",
+      "approverName": "Sari Admin",
+      "returnReason": "Please attach the doctor's note.",
+      "attachmentCount": 0,
+      "attachments": [],
+      "timeline": [
+        { "stepName": "Direct manager", "action": "RETURNED", "actorName": "Sari Admin", "notes": "Please attach the doctor's note.", "createdAt": "2026-10-19T02:00:00.000Z" }
+      ],
+      "originalRequestNo": null
+    },
+    {
+      "id": "req-102",
+      "requestNo": "ESS-REQ-2026-000102",
+      "type": "OVERTIME",
+      "status": "APPROVED",
+      "submittedAt": "2026-10-10T05:00:00.000Z",
+      "decidedAt": "2026-10-11T05:00:00.000Z",
+      "reason": "Month-end stock opname",
+      "workingDays": null,
+      "expectedHours": 2,
+      "period": { "date": "2026-10-14", "startTime": "18:00", "endTime": "20:00", "halfDay": null },
+      "payload": { "workDescription": "Counting stock with the warehouse team", "locationText": "Warehouse" },
+      "currentStepName": null,
+      "approverName": "Sari Admin",
+      "returnReason": null,
+      "attachmentCount": 0,
+      "attachments": [],
+      "timeline": [
+        { "stepName": "Direct manager", "action": "APPROVED", "actorName": "Sari Admin", "notes": "Approved — cover the shift.", "createdAt": "2026-10-11T05:00:00.000Z" }
+      ],
+      "originalRequestNo": null
+    },
+    {
+      "id": "req-103",
+      "requestNo": "ESS-REQ-2026-000103",
+      "type": "ATTENDANCE_CORRECTION",
+      "status": "SUBMITTED",
+      "submittedAt": "2026-10-22T23:40:00.000Z",
+      "decidedAt": null,
+      "reason": "Scanner was down at the gate",
+      "workingDays": null,
+      "expectedHours": null,
+      "period": { "date": "2026-10-27", "startTime": null, "endTime": null, "halfDay": null },
+      "payload": { "attendanceDate": "2026-10-27", "originalTime": "08:00", "requestedTime": "07:58", "explanation": "Fingerprint scanner was offline; arrived on time." },
+      "currentStepName": "Direct manager",
+      "approverName": null,
+      "returnReason": null,
+      "attachmentCount": 0,
+      "attachments": [],
+      "timeline": [],
+      "originalRequestNo": null
+    },
+    {
+      "id": "req-104",
+      "requestNo": "ESS-REQ-2026-000104",
+      "type": "LEAVE",
+      "status": "APPROVED",
+      "submittedAt": "2026-09-25T02:00:00.000Z",
+      "decidedAt": "2026-09-27T01:00:00.000Z",
+      "reason": "Family event",
+      "workingDays": 2,
+      "expectedHours": null,
+      "period": { "start": "2026-10-13", "end": "2026-10-14", "halfDay": "NONE" },
+      "payload": { "leaveTypeId": "lt_annual" },
+      "currentStepName": null,
+      "approverName": "Sari Admin",
+      "returnReason": null,
+      "attachmentCount": 0,
+      "attachments": [],
+      "timeline": [
+        { "stepName": "Direct manager", "action": "APPROVED", "actorName": "Sari Admin", "notes": "OK", "createdAt": "2026-09-26T01:00:00.000Z" },
+        { "stepName": "HR review", "action": "APPROVED", "actorName": "Rina HR", "notes": null, "createdAt": "2026-09-27T01:00:00.000Z" }
+      ],
+      "originalRequestNo": null
+    },
+    {
+      "id": "req-105",
+      "requestNo": "ESS-REQ-2026-000105",
+      "type": "LEAVE",
+      "status": "CANCELLED",
+      "submittedAt": "2026-10-01T04:00:00.000Z",
+      "decidedAt": "2026-10-02T01:00:00.000Z",
+      "reason": "Trip postponed",
+      "workingDays": 1,
+      "expectedHours": null,
+      "period": { "start": "2026-11-20", "end": "2026-11-20", "halfDay": "NONE" },
+      "payload": { "leaveTypeId": "lt_annual" },
+      "currentStepName": null,
+      "approverName": null,
+      "returnReason": null,
+      "attachmentCount": 0,
+      "attachments": [],
+      "timeline": [
+        { "stepName": "Direct manager", "action": "CANCELLED", "actorName": "Budi Santoso", "notes": "Plans changed.", "createdAt": "2026-10-02T01:00:00.000Z" }
+      ],
+      "originalRequestNo": null
+    }
+  ],
+  "approvals": {
+    "items": [
+      {
+        "requestId": "apr-001",
+        "recordId": "req-100",
+        "version": 1,
+        "availableActions": ["APPROVED", "REJECTED", "RETURNED"],
+        "requestNo": "ESS-REQ-2026-000100",
+        "type": "LEAVE",
+        "status": "SUBMITTED",
+        "employee": { "id": "emp-002", "name": "Agus Team", "department": "Operations" },
+        "submittedAt": "2026-10-20T01:00:00.000Z",
+        "period": { "start": "2026-11-02", "end": "2026-11-04", "halfDay": "NONE" },
+        "reason": "Family holiday in Jogja",
+        "workingDays": 3,
+        "expectedHours": null,
+        "currentStepName": "Direct manager",
+        "approverName": null,
+        "returnReason": null,
+        "ageDays": 2,
+        "overdue": false,
+        "hasAttachments": true,
+        "attachmentCount": 1,
+        "attachments": [
+          { "id": "att-apr1", "fileName": "surat-cuti.pdf", "mimeType": "application/pdf", "size": 148431 }
+        ],
+        "timeline": []
+      },
+      {
+        "requestId": "apr-002",
+        "recordId": "req-103",
+        "version": 2,
+        "availableActions": ["APPROVED", "REJECTED", "RETURNED"],
+        "requestNo": "ESS-REQ-2026-000103",
+        "type": "ATTENDANCE_CORRECTION",
+        "status": "SUBMITTED",
+        "employee": { "id": "emp-003", "name": "Dewi Karyawan", "department": "Gudang" },
+        "submittedAt": "2026-10-17T01:00:00.000Z",
+        "period": { "date": "2026-10-27", "startTime": null, "endTime": null, "halfDay": null },
+        "reason": "Scanner was down at the gate",
+        "workingDays": null,
+        "expectedHours": null,
+        "currentStepName": "Direct manager",
+        "approverName": null,
+        "returnReason": null,
+        "ageDays": 6,
+        "overdue": true,
+        "hasAttachments": false,
+        "attachmentCount": 0,
+        "attachments": [],
+        "timeline": []
+      }
+    ],
+    "leaveContextByRequest": {
+      "apr-001": {
+        "leaveType": "Annual leave",
+        "startDate": "2026-11-02",
+        "endDate": "2026-11-04",
+        "requestedDays": 3,
+        "balance": { "entitled": 12, "used": 6, "pending": 1, "available": 5 },
+        "overlapping": [
+          { "requestNo": "ESS-REQ-2026-000041", "start": "2026-11-03", "end": "2026-11-03", "status": "APPROVED" }
+        ]
+      }
+    },
+    "correctionContextByRequest": {
+      "apr-002": {
+        "workDate": "2026-10-27",
+        "correctionType": "CHECK_IN",
+        "before": { "checkIn": null },
+        "after": { "checkIn": "07:58" },
+        "attendance": { "status": "INCOMPLETE", "checkIn": null, "checkOut": null },
+        "originalPunch": { "punchAt": "2026-10-27T08:00:11.000Z", "punchType": "CHECK_IN", "source": "DEVICE", "dedupeKey": "dk-77f1" },
+        "schedule": { "shiftName": "Morning (07:00–16:00)" },
+        "flags": ["possible_duplicate", "missing_punch"]
+      }
+    },
+    "delegations": [
+      {
+        "id": "del-001",
+        "direction": "INBOUND",
+        "counterpart": { "id": "emp-009", "name": "Pak Boss" },
+        "startsAt": "2026-10-20T00:00:00.000Z",
+        "endsAt": "2026-11-20T23:59:59.000Z",
+        "formTypes": ["LEAVE"],
+        "isActive": true
+      }
+    ]
+  },
+  "manager": {
+    "dashboard": {
+      "teamCount": 4,
+      "pendingCount": 2,
+      "completed30d": 12,
+      "rejected30d": 1,
+      "overdueCount": 1,
+      "team": [
+        { "employeeId": "emp-002", "name": "Agus Team", "department": "Operations", "todayAttendance": { "status": "PRESENT", "checkIn": "08:01", "checkOut": null }, "pendingCount": 1 },
+        { "employeeId": "emp-003", "name": "Dewi Karyawan", "department": "Gudang", "todayAttendance": null, "pendingCount": 1 },
+        { "employeeId": "emp-004", "name": "Rina Castulan", "department": "Operations", "todayAttendance": { "status": "ON_LEAVE", "checkIn": null, "checkOut": null }, "pendingCount": 0 },
+        { "employeeId": "emp-005", "name": "Tono Wibowo", "department": "Gudang", "todayAttendance": { "status": "LATE", "checkIn": "08:47", "checkOut": null }, "pendingCount": 0 }
+      ],
+      "serverTime": "2026-10-23T01:00:00.000Z"
+    }
+  },
+  "payroll": {
+    "summary": {
+      "published": true,
+      "latest": {
+        "periodId": "per-2026-09",
+        "periodCode": "2026-09",
+        "periodLabel": "September 2026",
+        "netSalary": "9800000.00",
+        "paymentStatus": "PAID",
+        "paymentDate": "2026-09-27",
+        "payslipNumber": "PAYSLIP-2026-000912",
+        "hasPayslip": true
+      },
+      "ytd": { "gross": "76450000.00", "deductions": "7350000.00" },
+      "releasedDocumentCount": 2,
+      "openInquiryCount": 1,
+      "serverTime": "2026-10-23T01:00:00.000Z"
+    },
+    "periods": [
+      { "periodId": "per-2026-09", "periodCode": "2026-09", "periodLabel": "September 2026", "netSalary": "9800000.00", "paymentStatus": "PAID", "paymentDate": "2026-09-27", "payslipNumber": "PAYSLIP-2026-000912", "hasPayslip": true },
+      { "periodId": "per-2026-08", "periodCode": "2026-08", "periodLabel": "August 2026", "netSalary": "9800000.00", "paymentStatus": "FINALIZED", "paymentDate": null, "payslipNumber": "PAYSLIP-2026-000871", "hasPayslip": true },
+      { "periodId": "per-2026-07", "periodCode": "2026-07", "periodLabel": "July 2026", "netSalary": "10150000.00", "paymentStatus": "PUBLISHED", "paymentDate": null, "payslipNumber": "PAYSLIP-2026-000805", "hasPayslip": true },
+      { "periodId": "per-2026-06", "periodCode": "2026-06", "periodLabel": "June 2026", "netSalary": "9800000.00", "paymentStatus": "PAID", "paymentDate": "2026-06-27", "payslipNumber": "PAYSLIP-2026-000744", "hasPayslip": true },
+      { "periodId": "per-2026-05", "periodCode": "2026-05", "periodLabel": "May 2026", "netSalary": "9650000.00", "paymentStatus": "PAID", "paymentDate": "2026-05-27", "payslipNumber": "PAYSLIP-2026-000690", "hasPayslip": true },
+      { "periodId": "per-2026-04", "periodCode": "2026-04", "periodLabel": "April 2026", "netSalary": "9800000.00", "paymentStatus": "PAID", "paymentDate": "2026-04-27", "payslipNumber": "PAYSLIP-2026-000631", "hasPayslip": true }
+    ],
+    "payslip": {
+      "payslipId": "ps-000912",
+      "number": "PAYSLIP-2026-000912",
+      "version": 1,
+      "supersedesNumber": null,
+      "publishedAt": "2026-09-25T00:00:00.000Z",
+      "employee": { "employeeNumber": "EMP-007", "name": "Budi Santoso", "company": "WEHA Retail", "department": "Operations", "position": "Store Supervisor" },
+      "period": { "periodId": "per-2026-09", "periodLabel": "September 2026", "paymentDate": "2026-09-27" },
+      "payment": { "status": "PAID", "paidAt": "2026-09-27", "reference": "TRF-2026-8871" },
+      "earnings": [
+        { "code": "BASIC", "name": "Basic salary", "category": "FIXED_EARNING", "amount": "10000000.00" },
+        { "code": "TRANSPORT", "name": "Transport allowance", "category": "FIXED_EARNING", "amount": "500000.00" },
+        { "code": "OT_HOURS", "name": "Overtime (3.5 h)", "category": "VARIABLE_EARNING", "amount": "350000.00" }
+      ],
+      "deductions": [
+        { "code": "PPh21", "name": "PPh 21", "category": "STATUTORY", "amount": "450000.00" },
+        { "code": "BPJS_KES_EMP", "name": "BPJS Kesehatan (employee)", "category": "STATUTORY", "amount": "100000.00" },
+        { "code": "LOAN", "name": "Equipment loan", "category": "DEDUCTION", "amount": "500000.00" }
+      ],
+      "employeeContributions": [
+        { "code": "BPJS_JHT_EMP", "name": "BPJS JHT (employee)", "category": "STATUTORY", "amount": "200000.00" }
+      ],
+      "employerContributions": [
+        { "code": "BPJS_KES_ER", "name": "BPJS Kesehatan (employer)", "category": "STATUTORY", "amount": "100000.00" },
+        { "code": "BPJS_JHT_ER", "name": "BPJS JHT (employer)", "category": "STATUTORY", "amount": "200000.00" }
+      ],
+      "summary": { "gross": "10850000.00", "totalDeductions": "1050000.00", "netSalary": "9800000.00", "employerCost": "11150000.00" },
+      "pdf": { "available": true, "generating": false }
+    },
+    "payments": [
+      { "periodId": "per-2026-09", "periodLabel": "September 2026", "paidAt": "2026-09-27", "reference": "TRF-2026-8871", "method": "TRANSFER" },
+      { "periodId": "per-2026-06", "periodLabel": "June 2026", "paidAt": "2026-06-27", "reference": "TRF-2026-7610", "method": "TRANSFER" },
+      { "periodId": "per-2026-05", "periodLabel": "May 2026", "paidAt": "2026-05-27", "reference": "TRF-2026-7044", "method": "TRANSFER" },
+      { "periodId": "per-2026-04", "periodLabel": "April 2026", "paidAt": "2026-04-27", "reference": "TRF-2026-6502", "method": "TRANSFER" }
+    ],
+    "documents": [
+      { "documentId": "doc-1721a1", "number": "PAYDOC-2026-000007", "type": "PPH21_1721_A1", "taxYear": 2025, "periodLabel": null, "status": "RELEASED", "releasedAt": "2026-03-01", "fileName": "1721-A1-2025-EMP007.pdf", "size": 245760 },
+      { "documentId": "doc-bpjs", "number": "PAYDOC-2026-000011", "type": "BPJS_STATEMENT", "taxYear": null, "periodLabel": "Q3 2026", "status": "RELEASED", "releasedAt": "2026-10-05", "fileName": "BPJS-Q3-2026-EMP007.pdf", "size": 132096 }
+    ],
+    "inquiries": [
+      {
+        "inquiryId": "inq-1",
+        "number": "PAYINQ-2026-000042",
+        "category": "INCORRECT_DEDUCTION",
+        "periodId": "per-2026-09",
+        "periodLabel": "September 2026",
+        "subject": "Loan deduction looks doubled",
+        "status": "IN_PROGRESS",
+        "submittedAt": "2026-10-22T08:00:00.000Z",
+        "resolvedAt": null,
+        "attachmentCount": 1,
+        "attachments": [
+          { "id": "att-inq1", "fileName": "bukti-gaji.pdf", "mimeType": "application/pdf", "size": 204800 }
+        ],
+        "messages": [
+          { "authorRole": "EMPLOYEE", "authorName": "Budi Santoso", "message": "The equipment loan deduction was charged twice this month.", "createdAt": "2026-10-22T08:00:00.000Z" },
+          { "authorRole": "HR", "authorName": "Rina HR", "message": "Checking with payroll — will revert by Friday.", "createdAt": "2026-10-22T10:30:00.000Z" }
+        ]
+      },
+      {
+        "inquiryId": "inq-2",
+        "number": "PAYINQ-2026-000038",
+        "category": "PPH21_INQUIRY",
+        "periodId": "per-2026-08",
+        "periodLabel": "August 2026",
+        "subject": "PPh 21 annual summary question",
+        "status": "RESOLVED",
+        "submittedAt": "2026-09-30T02:00:00.000Z",
+        "resolvedAt": "2026-10-02T01:00:00.000Z",
+        "attachmentCount": 0,
+        "attachments": [],
+        "messages": [
+          { "authorRole": "EMPLOYEE", "authorName": "Budi Santoso", "message": "Where can I find my annual PPh 21 summary?", "createdAt": "2026-09-30T02:00:00.000Z" },
+          { "authorRole": "HR", "authorName": "Rina HR", "message": "It is released under Tax & BPJS each March — 1721-A1 is now available.", "createdAt": "2026-10-02T01:00:00.000Z" }
+        ]
+      }
+    ]
+  }
+}

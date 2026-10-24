@@ -213,6 +213,13 @@ export async function createRendererBridge(platform: PlatformKind): Promise<Devi
 
     cloud: {
       async request(req: CloudRequest): Promise<CloudResponse> {
+        // Dummy-data preview mode (docs/ESS-DUMMY-DATA.md): answer ESS mobile
+        // calls from the local fixture; everything else hits the network.
+        if (process.env.NEXT_PUBLIC_ESS_DUMMY === '1') {
+          const { matchDummyApi } = await import('../mocks/dummy-api');
+          const dummy = await matchDummyApi(req);
+          if (dummy) return dummy;
+        }
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), req.timeoutMs ?? 30000);
         try {

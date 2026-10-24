@@ -109,4 +109,5 @@ Change it immediately on a real device.
 - [ESS Phase 6](docs/ESS-PHASE6.md) — manager dashboard, approval inbox, delegation & workflow (acceptance evidence)
 - [ESS manager contract](docs/ESS-MANAGER-CONTRACT.md) — manager/approvals backend interface (weha-ai-hrd, consolidates Phase 3/4 records)
 - [ESS API reference](docs/ESS-API-REFERENCE.md) — EVERY endpoint required from weha-ai-hrd with request/response formats (backend build guide)
+- [ESS dummy data](docs/ESS-DUMMY-DATA.md) — preview every screen offline with JSON fixtures (`NEXT_PUBLIC_ESS_DUMMY=1`)
 - [AGENTS.md](AGENTS.md) — conventions for AI agents working in this repo
