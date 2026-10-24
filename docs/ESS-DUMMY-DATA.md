@@ -7,12 +7,22 @@ is ready you switch it on by **removing one env var — no code changes**.
 
 ## 1. Enable / disable
 
+**One command, no config needed:**
+
 ```bash
-# .env.local (see .env.example)
-NEXT_PUBLIC_ESS_DUMMY=1     # preview ON — fixture answers all ESS calls
+npm run dev:dummy     # dev server with NEXT_PUBLIC_ESS_DUMMY=1 (port 3180)
 ```
 
-Restart `npm run dev` (the flag is inlined at build/dev time).
+Open http://localhost:3180 and sign in with `budi@example.com` (any
+password). A fresh server start is required for the flag to apply (it is
+inlined at compile time).
+
+> Prefer not to use a separate command? You can instead put
+> `NEXT_PUBLIC_ESS_DUMMY=1` in a `.env.local` and run `npm run dev` — but
+> then **every local Playwright run also serves dummy data** (the fixtures
+> answer before route mocks see the request), so `npm run test:e2e` would
+> fail locally. The `dev:dummy` script avoids that: normal `npm run dev` and
+> the test suites stay untouched.
 
 | Flag | Behavior |
 |---|---|

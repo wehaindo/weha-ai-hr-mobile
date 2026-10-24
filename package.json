@@ -7,6 +7,7 @@
   "scripts": {
     "postinstall": "node scripts/copy-wasm.mjs",
     "dev": "cross-env NEXT_PUBLIC_APP_TARGET=web next dev --port 3180",
+    "dev:dummy": "cross-env NEXT_PUBLIC_APP_TARGET=web NEXT_PUBLIC_ESS_DUMMY=1 next dev --port 3180",
     "build": "cross-env NEXT_PUBLIC_APP_TARGET=web next build",
     "preview": "npx --yes serve out -l 3180",
     "pwa:icons": "node scripts/generate-pwa-icons.mjs",
