@@ -95,7 +95,7 @@ export default function LoginScreen() {
   );
 
   const handleMobileSubmit = useCallback(
-    async (email: string, password: string) => {
+    async (email: string, password: string, tenantSlug?: string) => {
       setError(undefined);
       try {
         if (isLocked()) {
@@ -103,7 +103,7 @@ export default function LoginScreen() {
           return;
         }
         setMobileBusy(true);
-        const user = await authenticateWithMobile(bridge, email, password);
+        const user = await authenticateWithMobile(bridge, email, password, tenantSlug);
         login(user);
         router.push('/dashboard');
       } catch (err) {
@@ -120,7 +120,7 @@ export default function LoginScreen() {
   );
 
   const handleMobileOtpSubmit = useCallback(
-    async (email: string, otp: string) => {
+    async (email: string, otp: string, tenantSlug?: string) => {
       setError(undefined);
       try {
         if (isLocked()) {
@@ -128,7 +128,7 @@ export default function LoginScreen() {
           return;
         }
         setMobileBusy(true);
-        const user = await authenticateWithMobileOtp(bridge, email, otp);
+        const user = await authenticateWithMobileOtp(bridge, email, otp, tenantSlug);
         login(user);
         router.push('/dashboard');
       } catch (err) {
@@ -142,8 +142,8 @@ export default function LoginScreen() {
   );
 
   const handleRequestCode = useCallback(
-    async (email: string) => {
-      const result = await requestMobileLoginCode(bridge, email);
+    async (email: string, tenantSlug?: string) => {
+      const result = await requestMobileLoginCode(bridge, email, tenantSlug);
       return { devCode: result.devCode };
     },
     [bridge]

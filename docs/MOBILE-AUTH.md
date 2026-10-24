@@ -58,10 +58,13 @@ usable offline.
    `MOBILE_ACCESS_SECRET` for production (a dev fallback exists, so local
    dev works without it). CORS is already open (`*`) on the mobile routes.
 
-3. **Tenant slug** — on the device: **Settings → Security → Mobile login
-   (WEHA account)** → enter the tenant slug → Save.
-   Leave it **empty for single-tenant** deployments (the framework then uses
-   its default tenant). The card also shows the framework URL in effect.
+3. **Tenant slug** — quickest: use the **Tenant (optional)** field directly
+   on the WEHA-account login card (multi-tenant servers require it; the value
+   is remembered after a successful sign-in). Alternatively set it on the
+   device: **Settings → Security → Mobile login (WEHA account)** → enter the
+   tenant slug → Save. Leave it **empty for single-tenant** deployments (the
+   framework then uses its default tenant). The Settings card also shows the
+   framework URL in effect.
 
 4. Keep the framework running when someone signs in with a WEHA account.
    PIN / local logins work with the framework stopped.
@@ -120,7 +123,7 @@ Setting a mobile password later (setup link) unlocks password sign-in.
 | What | Where | Key / value |
 |---|---|---|
 | Framework base URL | `.env.local` → `device.config.ts` | `NEXT_PUBLIC_ERP_BASE_URL` |
-| Tenant slug | Settings → Security → *Mobile login* | `device_settings` key `auth.mobileTenantSlug` (empty = single-tenant) |
+| Tenant slug | Login card **Tenant** field (remembered after sign-in), or Settings → Security → *Mobile login* | `device_settings` key `auth.mobileTenantSlug` (empty = single-tenant) |
 | Token pair | SQLite (device) | table `mobile_auth_sessions` (single row) |
 | Session identity/perms | Browser localStorage | zustand key `device-auth` (`authSource: 'mobile'`) |
 | Access JWT secret | weha-framework env | `MOBILE_ACCESS_SECRET` (HS256, 15 min) |
