@@ -30,13 +30,15 @@ export interface NavItem {
   fullscreen?: boolean;
   /** Public routes skip authentication (login screen) */
   public?: boolean;
+  /** Primary tab in the bottom navigator (mobile layouts); unflagged items live under "More" */
+  mobile?: boolean;
 }
 
 export const NAV_ITEMS: NavItem[] = [
-  { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-  { label: 'My Attendance', href: '/attendance', icon: CalendarCheck, permission: 'ess.use' },
-  { label: 'Leave', href: '/leave', icon: CalendarDays, permission: 'ess.use' },
-  { label: 'Requests', href: '/requests', icon: Inbox, permission: 'ess.use' },
+  { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, mobile: true },
+  { label: 'My Attendance', href: '/attendance', icon: CalendarCheck, permission: 'ess.use', mobile: true },
+  { label: 'Leave', href: '/leave', icon: CalendarDays, permission: 'ess.use', mobile: true },
+  { label: 'Requests', href: '/requests', icon: Inbox, permission: 'ess.use', mobile: true },
   { label: 'Profile', href: '/profile', icon: User, permission: 'ess.use' },
   { label: 'Approvals', href: '/approvals', icon: ShieldCheck, permission: 'ess.approve' },
   { label: 'Manager', href: '/manager', icon: Users, permission: 'ess.approve' },

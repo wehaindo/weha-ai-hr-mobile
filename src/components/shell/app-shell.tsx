@@ -11,6 +11,7 @@ import DesktopHeader from './desktop-header';
 import TouchKeyboard from './touch-keyboard-gate';
 import BottomNav from './bottom-nav';
 import ProfileSheet from './profile-sheet';
+import MoreSheet from './more-sheet';
 import { useBottomNav } from '@/hooks/use-bottom-nav';
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
@@ -21,6 +22,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const bottomNav = useBottomNav();
   const [profileOpen, setProfileOpen] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
 
   // Restore collapsed state persisted by SidebarProvider (sidebar_state cookie).
   useEffect(() => {
@@ -95,8 +97,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           </div>
           <div className="p-4">{children}</div>
         </div>
-        <BottomNav onOpenProfile={() => setProfileOpen(true)} />
+        <BottomNav onOpenProfile={() => setProfileOpen(true)} onOpenMore={() => setMoreOpen(true)} />
         <ProfileSheet open={profileOpen} onOpenChange={setProfileOpen} />
+        <MoreSheet open={moreOpen} onOpenChange={setMoreOpen} />
       </div>
     );
   }

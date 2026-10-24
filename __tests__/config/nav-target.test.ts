@@ -45,4 +45,10 @@ describe('nav.config build-target gating', () => {
     expect(routeModule('/dashboard')).toBeUndefined();
     expect(routeModule('/sync/queue')).toBe('sync');
   });
+
+  it('flags exactly the primary bottom-nav tabs as mobile', async () => {
+    const { NAV_ITEMS } = await loadNav('web');
+    const primary = NAV_ITEMS.filter((i) => i.mobile).map((i) => i.href);
+    expect(primary).toEqual(['/dashboard', '/attendance', '/leave', '/requests']);
+  });
 });

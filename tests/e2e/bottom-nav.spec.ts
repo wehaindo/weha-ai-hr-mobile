@@ -3,7 +3,8 @@ import { loginAsAdmin, resetAppState } from './helpers/test-utils';
 
 // Bottom navigator (web/PWA narrow + Capacitor mobile). The default project
 // viewport is 1280×800 (sidebar mode), so these tests run at a phone width to
-// exercise the bottom-nav shell.
+// exercise the bottom-nav shell: primary tabs (nav.config `mobile: true`),
+// the More sheet for everything else, and the Profile sheet.
 
 /** Reset + sign in, then neutralize the Next.js dev-tools overlay (dev only). */
 async function startOnMobile(page: Page): Promise<void> {
@@ -29,17 +30,38 @@ test.describe('bottom navigator (mobile viewport)', () => {
     // header controls are gone on the bottom-nav layout
     await expect(page.getByTestId('user-menu')).toHaveCount(0);
     await expect(page.getByTestId('page-title')).toHaveText('Dashboard');
+
+    // primary tabs + More + Profile — no flood of ESS entries
+    await expect(page.getByTestId('nav-/dashboard')).toBeVisible();
+    await expect(page.getByTestId('nav-/attendance')).toBeVisible();
+    await expect(page.getByTestId('nav-/leave')).toBeVisible();
+    await expect(page.getByTestId('nav-/requests')).toBeVisible();
+    await expect(page.getByTestId('more-tab')).toBeVisible();
+    await expect(page.getByTestId('profile-tab')).toBeVisible();
+    // non-primary pages never render as direct tabs
+    await expect(page.getByTestId('nav-/settings')).toHaveCount(0);
   });
 
-  test('navigates between sections via the bottom tabs', async ({ page }) => {
+  test('navigates via primary tabs and the More sheet', async ({ page }) => {
     await startOnMobile(page);
 
+    await page.getByTestId('nav-/leave').click();
+    await expect(page.getByTestId('page-title')).toHaveText('Leave');
+
+    // More sheet holds the remaining permitted pages (admin sees Settings)
+    await page.getByTestId('more-tab').click();
+    await expect(page.getByTestId('more-sheet')).toBeVisible();
     await page.getByTestId('nav-/settings').click();
     await expect(page.getByTestId('settings-page')).toBeVisible();
     await expect(page.getByTestId('page-title')).toHaveText('Settings');
+    await expect(page.getByTestId('more-sheet')).toHaveCount(0);
 
+    // More tab highlights while on a page it contains, and primary tabs
+    // navigate back
+    await expect(page.getByTestId('more-tab')).toHaveClass(/text-primary/);
     await page.getByTestId('nav-/dashboard').click();
     await expect(page.getByTestId('dashboard')).toBeVisible();
+    await expect(page.getByTestId('page-title')).toHaveText('Dashboard');
   });
 
   test('profile tab opens the sheet with theme toggle and sign out', async ({ page }) => {

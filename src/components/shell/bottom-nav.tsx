@@ -1,24 +1,36 @@
 'use client';
 
 // Bottom navigator shown instead of the sidebar on web/PWA (narrow) and
-// Capacitor mobile. Same items + permission/module filtering as the sidebar,
-// plus a Profile entry that opens a bottom sheet (theme + sign out, replacing
-// the desktop header controls). Rendered in-flow by AppShell so content never
-// hides behind it.
+// Capacitor mobile. Primary tabs are the nav.config entries flagged
+// `mobile: true` (same permission/module filtering as the sidebar); the rest
+// live under a "More" tab, and a Profile tab opens a bottom sheet (theme +
+// sign out, replacing the desktop header controls). Rendered in-flow by
+// AppShell so content never hides behind it.
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { CircleUser } from 'lucide-react';
+import { CircleUser, MoreHorizontal } from 'lucide-react';
 import { navItemsForTarget } from '@/app/nav.config';
 import { useAuthStore } from '@/stores/auth';
 import { useSyncState } from './sync-indicator';
 import { cn } from '@/lib/utils';
 
-export default function BottomNav({ onOpenProfile }: { onOpenProfile: () => void }) {
+export default function BottomNav({
+  onOpenProfile,
+  onOpenMore,
+}: {
+  onOpenProfile: () => void;
+  onOpenMore: () => void;
+}) {
   const pathname = usePathname();
   const can = useAuthStore((s) => s.can);
 
-  const items = navItemsForTarget().filter((item) => !item.permission || can(item.permission));
+  const permitted = navItemsForTarget().filter((item) => !item.permission || can(item.permission));
+  const items = permitted.filter((item) => item.mobile);
+  const moreItems = permitted.filter((item) => !item.mobile);
+  const moreActive = moreItems.some(
+    (item) => pathname === item.href || pathname.startsWith(`${item.href}/`)
+  );
   const syncState = useSyncState();
 
   return (
@@ -56,6 +68,21 @@ export default function BottomNav({ onOpenProfile }: { onOpenProfile: () => void
           </Link>
         );
       })}
+
+      {moreItems.length > 0 && (
+        <button
+          type="button"
+          onClick={onOpenMore}
+          data-testid="more-tab"
+          className={cn(
+            'flex min-w-0 flex-1 flex-col items-center gap-0.5 py-2 text-[11px] font-medium',
+            moreActive ? 'text-primary' : 'text-muted-foreground'
+          )}
+        >
+          <MoreHorizontal className="size-5 shrink-0" />
+          <span className="truncate">More</span>
+        </button>
+      )}
 
       <button
         type="button"
