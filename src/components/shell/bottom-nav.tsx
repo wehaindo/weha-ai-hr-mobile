@@ -60,7 +60,6 @@ export default function BottomNav({
               >
                 <item.icon className="size-7 shrink-0" />
               </span>
-              <span className="truncate">{item.label}</span>
             </Link>
           );
         }
