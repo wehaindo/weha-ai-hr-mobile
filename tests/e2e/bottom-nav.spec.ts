@@ -35,6 +35,9 @@ test.describe('bottom navigator (mobile viewport)', () => {
     await expect(page.getByTestId('nav-/dashboard')).toBeVisible();
     await expect(page.getByTestId('nav-/leave')).toBeVisible();
     await expect(page.getByTestId('nav-/requests')).toBeVisible();
+    // Requests is the middle tab, rendered as a raised circle (FAB style)
+    await expect(page.getByTestId('nav-/requests').getByTestId('bottom-nav-circle')).toBeVisible();
+    await expect(page.getByTestId('bottom-nav-circle')).toHaveCount(1);
     await expect(page.getByTestId('more-tab')).toBeVisible();
     await expect(page.getByTestId('profile-tab')).toBeVisible();
     // non-primary pages never render as direct tabs

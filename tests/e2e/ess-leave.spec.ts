@@ -24,6 +24,11 @@ test.describe('ESS leave (BRD §4.1)', () => {
     await openLeave(page);
 
     const balance = page.getByTestId('balance-card').first();
+    await expect(page.getByTestId('leave-balances')).toBeVisible();
+    // dashboard-style 2-column status grid (pending / approved / rejected / total)
+    await expect(page.getByTestId('leave-status-grid')).toBeVisible();
+    await expect(page.getByTestId('leave-status-pending')).toBeVisible();
+    await expect(page.getByTestId('leave-status-total')).toBeVisible();
     await expect(balance).toHaveAttribute('data-code', 'ANNUAL');
     await expect(page.getByTestId('balance-available')).toContainText('5');
     await expect(page.getByTestId('balance-detail')).toContainText('6 used of 12');

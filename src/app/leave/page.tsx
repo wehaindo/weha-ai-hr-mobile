@@ -18,6 +18,9 @@ import { RequestList } from '@/components/ess/requests/request-list';
 import { RequestDetailDialog } from '@/components/ess/requests/request-detail';
 import { useRequests } from '@/hooks/useRequests';
 import { deleteDraft, listDrafts, type RequestDraft } from '@/lib/ess/requests/drafts';
+import type { EssRequestStatus } from '@/integration/ess/requests';
+
+const PENDING_STATUSES = new Set<EssRequestStatus>(['SUBMITTED', 'IN_REVIEW', 'RETURNED']);
 
 export default function LeavePage() {
   const bridge = useBridge();
@@ -94,9 +97,11 @@ export default function LeavePage() {
         </Card>
       ) : (
         <>
-          <section>
-            <h3 className="mb-2 text-sm font-medium text-muted-foreground">Balances ({state.types.types.length} types)</h3>
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3" data-testid="leave-balances">
+          <section className="space-y-2">
+            <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+              Balances ({state.types.types.length} types)
+            </h3>
+            <div className="grid grid-cols-2 gap-4" data-testid="leave-balances">
               {state.balances.length === 0 ? (
                 <p className="rounded-md border border-dashed p-4 text-sm text-muted-foreground" data-testid="leave-balances-empty">
                   No leave balances configured yet.
@@ -105,6 +110,44 @@ export default function LeavePage() {
                 state.balances.map((balance) => <BalanceCard key={balance.leaveTypeId} balance={balance} />)
               )}
             </div>
+          </section>
+
+          <section className="space-y-2">
+            <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+              Leave status
+            </h3>
+            {requests.state.status === 'ready' ? (
+              (() => {
+                const rows = requests.state.requests;
+                const counts = {
+                  pending: rows.filter((r) => PENDING_STATUSES.has(r.status)).length,
+                  approved: rows.filter((r) => r.status === 'APPROVED').length,
+                  rejected: rows.filter((r) => r.status === 'REJECTED').length,
+                };
+                const cards = [
+                  { id: 'pending', label: 'Pending', count: counts.pending },
+                  { id: 'approved', label: 'Approved', count: counts.approved },
+                  { id: 'rejected', label: 'Rejected', count: counts.rejected },
+                  { id: 'total', label: 'All leave requests', count: rows.length },
+                ];
+                return (
+                  <div className="grid grid-cols-2 gap-4" data-testid="leave-status-grid">
+                    {cards.map((card) => (
+                      <Card key={card.id} data-testid={`leave-status-${card.id}`}>
+                        <CardHeader className="pb-2">
+                          <CardDescription>{card.label}</CardDescription>
+                          <CardTitle className="text-lg" data-testid={`leave-status-${card.id}-count`}>
+                            {card.count}
+                          </CardTitle>
+                        </CardHeader>
+                      </Card>
+                    ))}
+                  </div>
+                );
+              })()
+            ) : (
+              <Skeleton className="h-24 w-full" />
+            )}
           </section>
 
           {drafts.length > 0 && !formOpen && (
@@ -163,8 +206,10 @@ export default function LeavePage() {
             </Card>
           )}
 
-          <section>
-            <h3 className="mb-2 text-sm font-medium text-muted-foreground">My leave requests</h3>
+          <section className="space-y-2">
+            <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+              My leave requests
+            </h3>
             {requests.state.status === 'ready' ? (
               <RequestList
                 requests={requests.state.requests}

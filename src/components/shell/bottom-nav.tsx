@@ -41,6 +41,29 @@ export default function BottomNav({
       {items.map((item) => {
         const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
         const isSync = item.href === '/sync';
+        // Center of the bar: Requests gets a raised circular (FAB-style) tab.
+        const isCenter = item.href === '/requests';
+        if (isCenter) {
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              data-testid={`nav-${item.href}`}
+              className={cn(
+                'flex min-w-0 flex-1 flex-col items-center gap-1 py-2 text-[11px] font-medium',
+                active ? 'text-primary' : 'text-muted-foreground'
+              )}
+            >
+              <span
+                data-testid="bottom-nav-circle"
+                className="flex size-11 -translate-y-3 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-md"
+              >
+                <item.icon className="size-5 shrink-0" />
+              </span>
+              <span className="truncate">{item.label}</span>
+            </Link>
+          );
+        }
         return (
           <Link
             key={item.href}
