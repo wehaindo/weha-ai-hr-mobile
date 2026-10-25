@@ -5,6 +5,7 @@ import {
   LayoutDashboard,
   Receipt,
   RefreshCw,
+  ScanLine,
   Settings,
   type LucideIcon,
 } from 'lucide-react';
@@ -27,6 +28,7 @@ export interface NavItem {
 export const NAV_ITEMS: NavItem[] = [
   { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { label: 'Transactions', href: '/transactions', icon: Receipt, permission: 'transactions.use' },
+  { label: 'Scan', href: '/scan-locate', icon: ScanLine, permission: 'transactions.use' },
   { label: 'Sync', href: '/sync', icon: RefreshCw, permission: 'sync.manage', module: 'sync' },
   { label: 'Settings', href: '/settings', icon: Settings, permission: 'settings.manage' },
 ];

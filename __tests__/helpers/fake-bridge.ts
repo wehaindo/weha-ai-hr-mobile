@@ -119,6 +119,39 @@ export async function createFakeBridge(): Promise<FakeBridgeHandle> {
       },
     },
 
+    push: {
+      async isSupported() {
+        return false;
+      },
+      async getPermission() {
+        return 'unsupported' as const;
+      },
+      async requestPermission() {
+        return 'unsupported' as const;
+      },
+      async getToken() {
+        return null;
+      },
+      onMessage() {
+        return () => undefined;
+      },
+      async unregister() {
+        /* no-op in tests */
+      },
+    },
+
+    location: {
+      async permission() {
+        return 'unsupported' as const;
+      },
+      async requestPermission() {
+        return 'denied' as const;
+      },
+      async getCurrent() {
+        throw new Error('unsupported');
+      },
+    },
+
     backup: {
       async saveToFile() {
         throw new Error('backup not available in tests');

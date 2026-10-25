@@ -19,7 +19,13 @@ afterEach(() => {
 describe('nav.config build-target gating', () => {
   it('shows all framework nav items on electron', async () => {
     const { navItemsForTarget } = await loadNav('electron');
-    expect(navItemsForTarget().map((i) => i.href)).toEqual(['/dashboard', '/transactions', '/sync', '/settings']);
+    expect(navItemsForTarget().map((i) => i.href)).toEqual([
+      '/dashboard',
+      '/transactions',
+      '/scan-locate',
+      '/sync',
+      '/settings',
+    ]);
   });
 
   it('still shows sync on the minimal profile (sync module stays on)', async () => {

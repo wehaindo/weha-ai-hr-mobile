@@ -72,6 +72,73 @@ contextBridge.exposeInMainWorld('deviceBridge', {
       ipcRenderer.invoke('cloud:google-oauth', { authorizeUrl, ...options }),
   },
 
+  // FCM push: Electron does not implement the Push API (and packaged builds are
+  // served over the insecure app:// origin), so a registration token cannot be
+  // acquired. isSupported=false / getToken=null make the app fall back to local
+  // notify(). Notification permission still works for those local notifications.
+  push: {
+    isSupported: async () => false,
+    getPermission: async () => (typeof Notification !== 'undefined' ? Notification.permission : 'unsupported'),
+    requestPermission: async () =>
+      typeof Notification !== 'undefined' ? Notification.requestPermission() : 'unsupported',
+    getToken: async () => null,
+    onMessage: () => () => {},
+    unregister: async () => {},
+  },
+
+  // Location runs directly in this renderer-ish context (browser geolocation,
+  // no IPC) — mirrors src/platform/renderer-location.ts. Structural local
+  // typing so preload stays self-contained (no shared-type import for these).
+  location: {
+    permission: async () => {
+      if (typeof navigator === 'undefined') return 'unsupported';
+      const nav = navigator as unknown as {
+        geolocation?: unknown;
+        permissions?: { query: (d: { name: string }) => Promise<{ state: string }> };
+      };
+      if (!nav.geolocation) return 'unsupported';
+      try {
+        const status = await nav.permissions?.query({ name: 'geolocation' });
+        if (status) return status.state as 'granted' | 'denied' | 'prompt';
+      } catch {
+        /* probe unsupported */
+      }
+      return 'prompt';
+    },
+    requestPermission: async (): Promise<'granted' | 'denied'> => {
+      const geo = (navigator as unknown as { geolocation?: Geolocation }).geolocation;
+      if (!geo) return 'denied';
+      return new Promise((resolve) => {
+        geo.getCurrentPosition(
+          () => resolve('granted'),
+          (err: GeolocationPositionError) => resolve(err.code === 1 ? 'denied' : 'granted'),
+          { enableHighAccuracy: false, timeout: 15000, maximumAge: 0 }
+        );
+      });
+    },
+    getCurrent: async (options?: { timeoutMs?: number }) => {
+      const geo = (navigator as unknown as { geolocation?: Geolocation }).geolocation;
+      if (!geo) throw new Error('unsupported');
+      return new Promise((resolve, reject) => {
+        geo.getCurrentPosition(
+          (pos: GeolocationPosition) =>
+            resolve({
+              latitude: pos.coords.latitude,
+              longitude: pos.coords.longitude,
+              accuracyMeters: pos.coords.accuracy,
+              capturedAt: new Date().toISOString(),
+            }),
+          (err: GeolocationPositionError) => {
+            if (err.code === 1) reject(new Error('permission_denied'));
+            else if (err.code === 3) reject(new Error('timeout'));
+            else reject(new Error('unavailable'));
+          },
+          { enableHighAccuracy: true, maximumAge: 0, timeout: options?.timeoutMs ?? 15000 }
+        );
+      });
+    },
+  },
+
   backup: {
     saveToFile: () => ipcRenderer.invoke('backup:save-to-file'),
     openFile: () => ipcRenderer.invoke('backup:open-file'),

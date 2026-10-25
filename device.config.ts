@@ -29,6 +29,7 @@ const fullModules = {
   retention: true,
   aiVoice: true,
   testing: true,
+  push: true,
 };
 
 // TS enforces the minimal profile covers every module key.
@@ -55,6 +56,7 @@ const minimalModules: ModuleFlags = {
   retention: true,
   aiVoice: false,
   testing: false,
+  push: true,
 };
 
 const deviceConfig = {
@@ -92,9 +94,22 @@ const deviceConfig = {
     heartbeatMs: 60000,
   },
 
+  // Firebase Cloud Messaging (public web config — NOT secrets; safe in the bundle).
+  // Used to acquire an FCM registration token on web/PWA. Capacitor uses
+  // google-services.json instead; the server-side sender config lives in the backend.
+  // See docs/FCM.md.
+  firebase: {
+    apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY ?? '',
+    authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN ?? '',
+    projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID ?? '',
+    messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID ?? '',
+    appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID ?? '',
+    /** Web Push VAPID key (Cloud Messaging → Web configuration). */
+    vapidKey: process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY ?? '',
+  },
+
   // Database file name (Electron stores it under app.getPath('userData'))
   dbName: 'device.db',
-
   // Feature switches for framework modules, resolved from the build target.
   modules: isFullTarget ? fullModules : minimalModules,
 };

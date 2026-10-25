@@ -94,6 +94,24 @@ export interface RealtimeStatusResult {
   posId: string | null;
 }
 
+/** Permission state for a device capability (browser permission semantics). */
+export type LocationPermission = 'granted' | 'denied' | 'prompt' | 'unsupported';
+
+/** A single GNSS/network location fix. */
+export interface GeoFix {
+  latitude: number;
+  longitude: number;
+  /** Device-reported accuracy radius in meters (never a guarantee). */
+  accuracyMeters: number;
+  /** ISO-8601 UTC capture timestamp — the device clock, evidence only. */
+  capturedAt: string;
+}
+
+export interface LocationOptions {
+  /** Milliseconds to wait for a fix. Default 15000. */
+  timeoutMs?: number;
+}
+
 export interface DeviceBridgeEventMap {
   'db:changed': (payload: { tables?: string[] }) => void;
   command: (payload: { command: string; data?: unknown }) => void;
@@ -101,7 +119,18 @@ export interface DeviceBridgeEventMap {
   'sync:status': (payload: { queueDepth: number; online: boolean }) => void;
   'realtime:status': (payload: { status: RealtimeStatus; error?: string }) => void;
   'realtime:command': (payload: { command: string; payload?: unknown }) => void;
+  'push:message': (payload: PushMessage) => void;
 }
+
+/** A foreground push message delivered while the app is open. */
+export interface PushMessage {
+  title?: string;
+  body?: string;
+  data?: Record<string, string>;
+}
+
+/** Permission state for notifications/push, or 'unsupported' on platforms with no push. */
+export type PushPermission = NotificationPermission | 'unsupported';
 
 export interface DeviceBridge {
   readonly platform: PlatformKind;
@@ -179,6 +208,34 @@ export interface DeviceBridge {
      * Electron-only; web/Capacitor throw (OAuth needs a backend).
      */
     googleOAuth(authorizeUrl: string, options?: { port?: number; timeoutMs?: number }): Promise<OAuthTokenResult>;
+  };
+  push: {
+    /** Whether FCM push is available on this platform (false → app falls back to local notify). */
+    isSupported(): Promise<boolean>;
+    /** Current notification permission ('unsupported' where push does not exist). */
+    getPermission(): Promise<PushPermission>;
+    /** Request notification permission; resolves to the resulting state. */
+    requestPermission(): Promise<PushPermission>;
+    /** Acquire (or reuse) the FCM registration token; null when unavailable/denied. */
+    getToken(): Promise<string | null>;
+    /** Subscribe to foreground push messages; returns an unsubscribe function. */
+    onMessage(listener: (message: PushMessage) => void): () => void;
+    /** Delete the FCM registration token and stop push on this device. */
+    unregister(): Promise<void>;
+  };
+  location: {
+    /** Current permission state; 'unsupported' when the platform has no geolocation. */
+    permission(): Promise<LocationPermission>;
+    /**
+     * Ask for location permission. Resolves 'granted'/'denied'. A non-permission
+     * failure (timeout/unavailable) still means permission was granted.
+     */
+    requestPermission(): Promise<'granted' | 'denied'>;
+    /**
+     * Get a single location fix. Throws Error with message
+     * 'permission_denied' | 'timeout' | 'unavailable' | 'unsupported'.
+     */
+    getCurrent(options?: LocationOptions): Promise<GeoFix>;
   };
   backup: {
     /**
