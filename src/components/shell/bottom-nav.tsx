@@ -56,9 +56,9 @@ export default function BottomNav({
             >
               <span
                 data-testid="bottom-nav-circle"
-                className="flex size-11 -translate-y-3 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-md"
+                className="flex size-14 -translate-y-4 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg"
               >
-                <item.icon className="size-5 shrink-0" />
+                <item.icon className="size-7 shrink-0" />
               </span>
               <span className="truncate">{item.label}</span>
             </Link>
