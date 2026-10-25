@@ -1,6 +1,7 @@
 'use client';
 
-// ESS Attendance (BRD §7A): status, punch action with method discovery,
+// "My attendance" dashboard section — the full attendance experience that
+// previously lived on /attendance: status, punch action with method discovery,
 // GPS/QR capture, confirmation outcomes and the sync queue surface.
 
 import { useEffect, useState } from 'react';
@@ -15,7 +16,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 
-export default function AttendancePage() {
+export function AttendanceSection() {
   const {
     state,
     capture,
@@ -47,9 +48,11 @@ export default function AttendancePage() {
   }, [state.status, choice, methodAvailability]);
 
   return (
-    <div className="mx-auto max-w-4xl space-y-6" data-testid="attendance-page">
+    <section className="space-y-4" data-testid="attendance-section">
       <div>
-        <h2 className="text-2xl font-bold tracking-tight">My Attendance</h2>
+        <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+          My attendance
+        </h3>
         <p className="text-sm text-muted-foreground">
           Check in and out with GPS or a worksite QR code — every punch is confirmed by the server.
         </p>
@@ -131,6 +134,6 @@ export default function AttendancePage() {
           </>
         );
       })()}
-    </div>
+    </section>
   );
 }

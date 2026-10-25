@@ -33,13 +33,13 @@ test.describe('bottom navigator (mobile viewport)', () => {
 
     // primary tabs + More + Profile — no flood of ESS entries
     await expect(page.getByTestId('nav-/dashboard')).toBeVisible();
-    await expect(page.getByTestId('nav-/attendance')).toBeVisible();
     await expect(page.getByTestId('nav-/leave')).toBeVisible();
     await expect(page.getByTestId('nav-/requests')).toBeVisible();
     await expect(page.getByTestId('more-tab')).toBeVisible();
     await expect(page.getByTestId('profile-tab')).toBeVisible();
     // non-primary pages never render as direct tabs
     await expect(page.getByTestId('nav-/settings')).toHaveCount(0);
+    await expect(page.getByTestId('nav-/attendance')).toHaveCount(0);
   });
 
   test('navigates via primary tabs and the More sheet', async ({ page }) => {

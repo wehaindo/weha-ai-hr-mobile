@@ -3,7 +3,6 @@
 
 import {
   Activity,
-  CalendarCheck,
   CalendarDays,
   Inbox,
   LayoutDashboard,
@@ -36,7 +35,6 @@ export interface NavItem {
 
 export const NAV_ITEMS: NavItem[] = [
   { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, mobile: true },
-  { label: 'My Attendance', href: '/attendance', icon: CalendarCheck, permission: 'ess.use', mobile: true },
   { label: 'Leave', href: '/leave', icon: CalendarDays, permission: 'ess.use', mobile: true },
   { label: 'Requests', href: '/requests', icon: Inbox, permission: 'ess.use', mobile: true },
   { label: 'Profile', href: '/profile', icon: User, permission: 'ess.use' },

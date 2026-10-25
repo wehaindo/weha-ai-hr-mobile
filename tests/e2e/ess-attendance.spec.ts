@@ -22,8 +22,8 @@ test.describe('ESS attendance', () => {
     await loginWithMobile(page);
     await expect(page.getByTestId('dashboard')).toBeVisible({ timeout: 30000 });
 
-    await page.goto('/attendance');
-    await expect(page.getByTestId('attendance-page')).toBeVisible();
+    await page.goto('/dashboard');
+    await expect(page.getByTestId('attendance-section')).toBeVisible();
     await expect(page.getByTestId('attendance-current')).toHaveText('Not checked in');
     await expect(page.getByTestId('readiness-gps')).toHaveAttribute('data-state', 'ready');
     await expect(page.getByTestId('readiness-qr')).toHaveAttribute('data-state', 'ready');
@@ -40,7 +40,7 @@ test.describe('ESS attendance', () => {
     const calls = await mockAttendanceApi(page);
     await loginAsAdmin(page);
 
-    await page.goto('/attendance');
+    await page.goto('/dashboard');
     await expect(page.getByTestId('attendance-no-session')).toBeVisible();
 
     expect(calls.configAuth).toHaveLength(0);
@@ -54,7 +54,7 @@ test.describe('ESS attendance', () => {
     await loginMobile(page);
     const calls = await mockAttendanceApi(page);
 
-    await page.goto('/attendance');
+    await page.goto('/dashboard');
     await expect(page.getByTestId('punch-action')).toBeEnabled();
     await page.getByTestId('punch-action').click();
 
@@ -81,7 +81,7 @@ test.describe('ESS attendance', () => {
     await loginMobile(page);
     const calls = await mockAttendanceApi(page);
 
-    await page.goto('/attendance');
+    await page.goto('/dashboard');
     await page.getByTestId('punch-action').click();
 
     await expect(page.getByTestId('punch-confirmation')).toHaveAttribute('data-kind', 'rejected');
@@ -120,7 +120,7 @@ test.describe('ESS attendance', () => {
       }),
     });
 
-    await page.goto('/attendance');
+    await page.goto('/dashboard');
     await page.getByTestId('punch-action').click();
 
     await expect(page.getByTestId('punch-confirmation')).toHaveAttribute('data-kind', 'duplicate');
@@ -136,7 +136,7 @@ test.describe('ESS attendance', () => {
 
     // Load the screen first (config/worksites/status), THEN lose the network.
     const preCalls = await mockAttendanceApi(page);
-    await page.goto('/attendance');
+    await page.goto('/dashboard');
     await expect(page.getByTestId('punch-action')).toBeEnabled();
     expect(preCalls.configAuth.length).toBeGreaterThan(0);
 
@@ -150,7 +150,7 @@ test.describe('ESS attendance', () => {
     await expect(page.getByTestId('pending-count')).toHaveText('1');
     await expect(page.getByTestId('readiness-sync')).toHaveAttribute('data-state', 'pending');
     // still on the attendance page — no forced logout offline
-    await expect(page.getByTestId('attendance-page')).toBeVisible();
+    await expect(page.getByTestId('attendance-section')).toBeVisible();
 
     // Back online: restore the mock and fire the browser 'online' event.
     await mockEssApi(page);
@@ -165,8 +165,8 @@ test.describe('ESS attendance', () => {
 
   test('returns to the login screen when the session cannot be refreshed', async ({ page }) => {
     await loginMobile(page);
-    await page.goto('/attendance');
-    await expect(page.getByTestId('attendance-page')).toBeVisible();
+    await page.goto('/dashboard');
+    await expect(page.getByTestId('attendance-section')).toBeVisible();
 
     // Backend starts rejecting everything, including the refresh.
     await page.unroute('**/api/mobile/v1/**');
@@ -183,7 +183,7 @@ test.describe('ESS attendance', () => {
       });
     });
 
-    await page.goto('/attendance');
+    await page.goto('/dashboard');
     await expect(page.getByTestId('user-grid')).toBeVisible({ timeout: 30000 });
   });
 
@@ -191,7 +191,7 @@ test.describe('ESS attendance', () => {
     await loginMobile(page);
     const calls = await mockAttendanceApi(page);
 
-    await page.goto('/attendance');
+    await page.goto('/dashboard');
     await page.getByTestId('method-qr').click();
     await expect(page.getByTestId('punch-action')).toHaveText('Scan QR to punch');
     await page.getByTestId('punch-action').click();

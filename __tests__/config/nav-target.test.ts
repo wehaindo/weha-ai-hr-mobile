@@ -22,7 +22,7 @@ describe('nav.config build-target gating', () => {
     // Full target: every declared item survives — framework entries and this
     // app's ESS additions alike (apps extend NAV_ITEMS by design).
     expect(nav.navItemsForTarget().map((i) => i.href)).toEqual(nav.NAV_ITEMS.map((i) => i.href));
-    expect(nav.navItemsForTarget().map((i) => i.href)).toContain('/attendance');
+    expect(nav.navItemsForTarget().map((i) => i.href)).toContain('/leave');
   });
 
   it('still shows sync on the minimal profile (sync module stays on)', async () => {
@@ -49,6 +49,6 @@ describe('nav.config build-target gating', () => {
   it('flags exactly the primary bottom-nav tabs as mobile', async () => {
     const { NAV_ITEMS } = await loadNav('web');
     const primary = NAV_ITEMS.filter((i) => i.mobile).map((i) => i.href);
-    expect(primary).toEqual(['/dashboard', '/attendance', '/leave', '/requests']);
+    expect(primary).toEqual(['/dashboard', '/leave', '/requests']);
   });
 });
