@@ -66,7 +66,11 @@ export function TodayPunchesList({
               >
                 <div>
                   <p className="font-medium">
-                    {event.attendanceType === 'CHECK_OUT' ? 'Check-out' : 'Check-in'} ·{' '}
+                    {event.attendanceType === 'CHECK_OUT'
+                      ? 'Check-out'
+                      : event.attendanceType === 'CHECK_IN'
+                        ? 'Check-in'
+                        : 'Punch'}{' '}
                     <span data-testid="today-item-time">{formatTime(event.recordedAt)}</span>
                   </p>
                   <p className="text-xs text-muted-foreground">

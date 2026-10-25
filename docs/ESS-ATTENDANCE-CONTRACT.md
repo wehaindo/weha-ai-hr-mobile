@@ -265,7 +265,10 @@ PATCH).
 
 ```jsonc
 { "id": "5f1c9a2b7d3e4f01",
-  "attendanceType": "CHECK_IN",         // SERVER-resolved
+  "attendanceType": "CHECK_IN",         // SERVER-resolved; may be null when the
+                                        // server rejects BEFORE type assignment
+                                        // (e.g. duplicate_interval) — the client
+                                        // tolerates null and renders "Punch"
   "method": "GPS",
   "status": "ACCEPTED",                 // ACCEPTED | REJECTED | DUPLICATE
   "recordedAt": "2026-10-22T08:02:15.000Z", // SERVER time the punch counts from

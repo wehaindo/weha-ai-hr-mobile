@@ -22,7 +22,8 @@ const meters = z.coerce.number().min(0);
 
 export const attendanceEventResultSchema = z.object({
   id: z.string(),
-  attendanceType: z.enum(['CHECK_IN', 'CHECK_OUT']),
+  /** Null when the server rejects before assigning a type (e.g. duplicate_interval). */
+  attendanceType: z.enum(['CHECK_IN', 'CHECK_OUT']).nullable(),
   method: z.string(),
   status: z.enum(['ACCEPTED', 'REJECTED', 'DUPLICATE']),
   /** Server time the punch counts from; null when REJECTED. */

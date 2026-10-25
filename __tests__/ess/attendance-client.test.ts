@@ -142,6 +142,55 @@ describe('EssAttendanceApi', () => {
     expect(result.recordedAt).toBeNull();
   });
 
+  it('tolerates a null attendanceType on server-rejected events', async () => {
+    const { api } = await makeApi(() =>
+      ok({
+        event: {
+          ...EVENT_RESULT,
+          status: 'REJECTED',
+          attendanceType: null,
+          recordedAt: null,
+          rejectionReason: 'duplicate_interval',
+          duplicateOfEventId: null,
+        },
+      })
+    );
+
+    const result = await api.submitEvent(SUBMISSION);
+
+    expect(result.status).toBe('REJECTED');
+    expect(result.attendanceType).toBeNull();
+    expect(result.rejectionReason).toBe('duplicate_interval');
+  });
+
+  it('parses a status payload whose rejected today-event has a null attendanceType', async () => {
+    const { api } = await makeApi(() =>
+      ok({
+        current: 'PRESENT',
+        expectedNext: 'CHECK_OUT',
+        today: [
+          { ...EVENT_RESULT },
+          {
+            ...EVENT_RESULT,
+            id: 'bbbbbbbbbbbbbbbb',
+            attendanceType: null,
+            status: 'REJECTED',
+            recordedAt: null,
+            rejectionReason: 'duplicate_interval',
+          },
+        ],
+        serverTime: '2026-10-25T03:47:07.063Z',
+      })
+    );
+
+    const status = await api.getStatus();
+
+    expect(status.current).toBe('PRESENT');
+    expect(status.today).toHaveLength(2);
+    expect(status.today[1].attendanceType).toBeNull();
+    expect(status.today[1].rejectionReason).toBe('duplicate_interval');
+  });
+
   it('syncEvents returns per-event results in order and coerces decimal strings', async () => {
     const { api, request } = await makeApi(() =>
       ok({

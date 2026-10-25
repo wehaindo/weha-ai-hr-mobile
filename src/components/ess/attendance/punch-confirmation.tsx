@@ -73,7 +73,15 @@ export function PunchConfirmation({
   const rows: Row[] =
     confirmation.kind === 'recorded' || confirmation.kind === 'duplicate'
       ? [
-          { label: 'Action', value: confirmation.event.attendanceType === 'CHECK_OUT' ? 'Check-out' : 'Check-in' },
+          {
+            label: 'Action',
+            value:
+              confirmation.event.attendanceType === 'CHECK_OUT'
+                ? 'Check-out'
+                : confirmation.event.attendanceType === 'CHECK_IN'
+                  ? 'Check-in'
+                  : 'Punch',
+          },
           { label: 'Time', value: formatTime(confirmation.event.recordedAt), testid: 'confirmation-time' },
           { label: 'Method', value: confirmation.event.method },
           {
