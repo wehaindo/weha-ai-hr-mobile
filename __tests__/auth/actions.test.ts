@@ -10,12 +10,13 @@ describe('auth actions', () => {
     vi.useRealTimers();
   });
 
-  it('lists the seeded admin user', async () => {
+  it('lists the seeded admin and demo users', async () => {
     const { bridge } = await createFakeBridge();
     const users = await fetchActiveUsers(bridge);
-    expect(users).toHaveLength(1);
+    expect(users).toHaveLength(2);
     expect(users[0].display_name).toBe('Administrator');
     expect(users[0].role).toBe('admin');
+    expect(users.map((u) => u.display_name)).toContain('Demo User');
   });
 
   it('authenticates the seeded admin with PIN 1234 and returns full permissions', async () => {
