@@ -49,7 +49,7 @@ jobs:
     # Build (~2 min for a static export) plus two rsync/ssh passes.
     timeout-minutes: 30
     env:
-      APP_DIR: ${{ vars.APP_DIR || '/var/www/weha/weha-ai-hrd-mobile' }}
+      APP_DIR: ${{ vars.APP_DIR || '/var/www/weha/weha-hrd-mobile' }}
       SSH_HOST: ${{ secrets.SSH_HOST }}
       SSH_USER: ${{ secrets.SSH_USER }}
       SSH_PORT: ${{ secrets.SSH_PORT || '22' }}
@@ -162,8 +162,8 @@ jobs:
       - name: Set up Node
         uses: actions/setup-node@v4
         with:
-          # Same version as ci.yml (no .nvmrc in this repo).
-          node-version: 20
+          # package.json engines: >=22.12 (electron 44 toolchain) — same as ci.yml.
+          node-version: 22
           cache: npm
 
       - name: Install dependencies
