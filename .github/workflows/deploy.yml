@@ -1,0 +1,219 @@
+name: Deploy
+
+# Builds the static web/PWA export in GitHub Actions and ships out/ to the
+# server over rsync — the same process as weha-framework's deploy (CI gate,
+# production approval, secrets preflight, build on the runner), minus the
+# server runtime: this app is `output: "export"`, so only static files move
+# (no PM2, no node_modules, no prisma).
+#
+# Why the build lives on the runner (same reasons as weha-framework):
+#   * `next build` needs a few GB of RAM and the production box has 2 GB;
+#   * the runner always has the network for fonts and npm.
+#
+# NEXT_PUBLIC_* values are inlined into the bundle at build time, so the
+# production NEXT_PUBLIC_ERP_BASE_URL comes from the server: the job ssh-cats
+# $APP_DIR/.env before building (the server stays the single source of truth
+# and nothing is shipped back — out/ contains only build output).
+#
+# Required repository secrets:
+#   SSH_HOST, SSH_USER, SSH_PRIVATE_KEY      (+ optional SSH_PORT, default 22)
+# Optional repository variables:
+#   APP_DIR (default /var/www/weha/weha-ai-hrd-mobile)
+# See docs/deployment.md for the server-side .env and nginx setup.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# One deploy at a time, and never cancel one that is already running — a killed
+# deploy can leave the server half-synced.
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    # Reuse the CI workflow as a gate (workflow_call in its `on:`).
+    uses: ./.github/workflows/ci.yml
+
+  deploy:
+    needs: verify
+    runs-on: ubuntu-latest
+    # The `production` environment adds a manual-approval button in the GitHub
+    # UI before the job runs, and lets you scope secrets to it.
+    environment: production
+    # Build (~2 min for a static export) plus two rsync/ssh passes.
+    timeout-minutes: 30
+    env:
+      APP_DIR: ${{ vars.APP_DIR || '/var/www/weha/weha-ai-hrd-mobile' }}
+      SSH_HOST: ${{ secrets.SSH_HOST }}
+      SSH_USER: ${{ secrets.SSH_USER }}
+      SSH_PORT: ${{ secrets.SSH_PORT || '22' }}
+      SSH_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+    steps:
+      # A secret that resolves to nothing usually shows up much later as a
+      # confusing ssh error, so check for it before anything else runs.
+      - name: Check deploy credentials
+        run: |
+          missing=""
+          if [ -z "$(printf '%s' "${SSH_HOST:-}" | tr -d '[:space:]')" ]; then missing="$missing SSH_HOST"; fi
+          if [ -z "$(printf '%s' "${SSH_USER:-}" | tr -d '[:space:]')" ]; then missing="$missing SSH_USER"; fi
+          if [ -z "$(printf '%s' "${SSH_KEY:-}"  | tr -d '[:space:]')" ]; then missing="$missing SSH_PRIVATE_KEY"; fi
+
+          if [ -n "$missing" ]; then
+            echo "::error::Missing or empty secret(s):$missing"
+            echo "Add them at Settings → Secrets and variables → Actions (repository"
+            echo "secrets, or under the 'production' environment), then re-run."
+            echo "See docs/deployment.md#github-configuration"
+            exit 1
+          fi
+
+          # A secret pasted with a stray newline usually shows up later as an
+          # auth failure, so warn about it while it is cheap to fix.
+          if [ "${SSH_HOST:-}" != "$(printf '%s' "$SSH_HOST" | tr -d '[:space:]')" ]; then
+            echo "::warning::SSH_HOST has leading/trailing whitespace or a newline — check the secret value."
+          fi
+
+          echo "Deploying to ${SSH_USER:-}@${SSH_HOST:-}:${APP_DIR}"
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # One host alias for every later step: rsync and ssh both pick it up from
+      # the ssh config, so host/port/key live in exactly one place.
+      - name: Configure SSH
+        run: |
+          mkdir -p "$HOME/.ssh"
+          chmod 700 "$HOME/.ssh"
+          printf '%s\n' "$SSH_KEY" > "$HOME/.ssh/id_deploy"
+          chmod 600 "$HOME/.ssh/id_deploy"
+          cat > "$HOME/.ssh/config" <<CFG
+          Host weha
+            HostName $SSH_HOST
+            User $SSH_USER
+            Port $SSH_PORT
+            IdentityFile $HOME/.ssh/id_deploy
+            IdentitiesOnly yes
+            StrictHostKeyChecking accept-new
+            UserKnownHostsFile $HOME/.ssh/known_hosts
+          CFG
+          chmod 600 "$HOME/.ssh/config"
+          # accept-new records the host key on first contact; a *changed* key
+          # still fails the deploy rather than trusting it silently.
+          ssh-keyscan -p "$SSH_PORT" "$SSH_HOST" >> "$HOME/.ssh/known_hosts" 2>/dev/null || true
+
+      # Runs on the server before the build, so a broken box fails the deploy
+      # in seconds instead of after two minutes of compiling.
+      - name: Prepare server
+        run: |
+          ssh weha "APP_DIR=$(printf '%q' "$APP_DIR") bash -s" <<'REMOTE'
+          set -euo pipefail
+
+          banner() { printf '\n==> %s\n' "$*"; }
+          die()    { printf 'ERROR: %s\n' "$*" >&2; exit 1; }
+
+          banner "Preparing $APP_DIR"
+
+          if [ ! -d "$APP_DIR" ]; then
+            mkdir -p "$APP_DIR" 2>/dev/null || true
+            if [ ! -d "$APP_DIR" ] && sudo -n true 2>/dev/null; then
+              sudo mkdir -p "$APP_DIR"
+              sudo chown -R "$(id -u):$(id -g)" "$APP_DIR"
+            fi
+          fi
+          [ -d "$APP_DIR" ] || die "cannot create $APP_DIR — run this once as a user with sudo: sudo mkdir -p $APP_DIR && sudo chown -R \$USER $APP_DIR"
+          [ -w "$APP_DIR" ] || die "$APP_DIR is not writable by $(id -un)"
+
+          # rsync runs with --delete: never point it at something that is not a
+          # previous deploy, or it would delete whatever lives there. A previous
+          # static deploy always has index.html (written by Verify build output).
+          if [ -n "$(ls -A "$APP_DIR" 2>/dev/null)" ] && [ ! -f "$APP_DIR/index.html" ]; then
+            die "$APP_DIR is not empty and is not a previous deploy (no index.html) — refusing to sync into it. Point the APP_DIR variable elsewhere or move its contents aside."
+          fi
+
+          if [ ! -f "$APP_DIR/.env" ]; then
+            echo "WARNING: no .env at $APP_DIR/.env — create it (cp .env.example .env) so the build"
+            echo "         sees the production NEXT_PUBLIC_ERP_BASE_URL. Building with .env.example."
+          fi
+
+          echo "Disk: $(df -h "$APP_DIR" | tail -n 1)"
+          REMOTE
+
+      # NEXT_PUBLIC_* values are compiled into the client bundle at build time,
+      # so the build has to see production's values. Pull them from the server
+      # instead of duplicating them as GitHub secrets — the server stays the
+      # single source of truth, and this copy never ships back.
+      - name: Fetch production .env for the build
+        run: |
+          if ssh weha "cat $(printf '%q' "$APP_DIR/.env")" > .env && [ -s .env ]; then
+            echo "Building with $APP_DIR/.env from the server."
+          else
+            echo "::warning::No .env on the server yet — building with .env.example, so NEXT_PUBLIC_ERP_BASE_URL will be a placeholder. Create .env on the server and re-run the deploy once it exists."
+            cp .env.example .env
+          fi
+          # The runner copy is build-only: force production and never ship it.
+          sed -i '/^NODE_ENV=/d' .env
+          echo 'NODE_ENV="production"' >> .env
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          # Same version as ci.yml (no .nvmrc in this repo).
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # package.json pins NEXT_PUBLIC_APP_TARGET=web and NODE_ENV=production,
+      # so a stray NODE_ENV in the environment cannot break prerendering.
+      - name: Build static export
+        env:
+          NEXT_TELEMETRY_DISABLED: '1'
+        run: npm run build
+
+      - name: Verify build output
+        run: |
+          set -euo pipefail
+          fail() { echo "::error::$*"; exit 1; }
+
+          [ -f out/index.html ]    || fail "out/index.html missing — next build produced nothing to ship"
+          [ -f out/manifest.json ] || fail "out/manifest.json missing — the PWA manifest did not ship"
+          [ -d out/_next/static ]  || fail "out/_next/static missing — hashed assets did not ship"
+
+          # RELEASE_SHA: which commit is serving, for ops.
+          printf '%s\n' "$GITHUB_SHA" > out/RELEASE_SHA
+
+          echo "out/ ready: $(find out -type f | wc -l) files @ $GITHUB_SHA"
+
+      # Static files only: out/ contains the complete site, and --delete makes
+      # removed routes disappear from the server too. The anchored exclude keeps
+      # server-side state (.env) protected even though it never lives in out/.
+      - name: Upload site
+        run: |
+          set -euo pipefail
+          LOG=/tmp/rsync-site.log
+          if ! rsync -az --delete -h --stats \
+            --exclude='/.env*' \
+            -e ssh \
+            ./out/ "weha:$APP_DIR/" >"$LOG" 2>&1; then
+            echo "::error::Uploading out/ failed"
+            tail -n 100 "$LOG"
+            exit 1
+          fi
+          tail -n 20 "$LOG"
+
+      - name: Verify deployment
+        run: |
+          ssh weha "APP_DIR=$(printf '%q' "$APP_DIR") bash -s" <<'REMOTE'
+          set -euo pipefail
+          [ -f "$APP_DIR/index.html" ] || { echo "ERROR: index.html missing after sync" >&2; exit 1; }
+          [ -d "$APP_DIR/_next" ]      || { echo "ERROR: _next missing after sync" >&2; exit 1; }
+          echo "Deployed $(cat "$APP_DIR/RELEASE_SHA" 2>/dev/null || echo 'unknown sha')"
+          echo "  into $APP_DIR"
+          df -h "$APP_DIR" | tail -n 1
+          REMOTE

@@ -4,6 +4,8 @@ on:
   push:
     branches: [main]
   pull_request:
+  # Reusable so deploy.yml can run the same checks as a gate.
+  workflow_call:
 
 jobs:
   checks:

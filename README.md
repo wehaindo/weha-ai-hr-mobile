@@ -96,6 +96,7 @@ Change it immediately on a real device.
 
 - [Architecture](docs/ARCHITECTURE.md) — bridge, database, sync, auth, theming
 - [Creating a device app](docs/CREATING-A-DEVICE-APP.md) — step-by-step extension guide
+- [Deployment](docs/deployment.md) — GitHub Actions → rsync web/PWA deploy
 - [Mobile auth](docs/MOBILE-AUTH.md) — WEHA-account login (password/OTP), setup links, env config
 - [ESS Phase 1](docs/ESS-PHASE1.md) — framework assessment & deployment decision
 - [ESS Phase 2](docs/ESS-PHASE2.md) — employee dashboard & profile (acceptance evidence)
