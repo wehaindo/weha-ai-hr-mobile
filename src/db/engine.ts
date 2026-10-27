@@ -9,6 +9,17 @@ export interface BlobStore {
   save(data: Uint8Array): Promise<void>;
 }
 
+/** Minimal browser surface used to flush on page hide — typed structurally so
+ * this file still compiles in the Electron main process (no DOM lib). */
+interface BrowserGlobals {
+  window?: { addEventListener(type: string, listener: () => void): void };
+  document?: {
+    addEventListener(type: string, listener: () => void): void;
+    visibilityState: string;
+  };
+}
+const browser = globalThis as unknown as BrowserGlobals;
+
 export interface SqlStatement {
   sql: string;
   params?: unknown[];
@@ -79,7 +90,8 @@ export async function createEngine(
   // Persist pending writes before the page goes away: the debounce timer dies
   // with the page context, so a reload right after a write (e.g. the
   // mobile_auth_sessions row written at login) would otherwise lose it.
-  if (typeof window !== 'undefined' && typeof document !== 'undefined') {
+  // (browser.window is undefined in the Electron main process — skipped there.)
+  if (browser.window && browser.document) {
     const flushNow = () => {
       if (timer) {
         clearTimeout(timer);
@@ -89,9 +101,9 @@ export async function createEngine(
         /* best-effort during unload */
       });
     };
-    window.addEventListener('pagehide', flushNow);
-    document.addEventListener('visibilitychange', () => {
-      if (document.visibilityState === 'hidden') flushNow();
+    browser.window.addEventListener('pagehide', flushNow);
+    browser.document.addEventListener('visibilitychange', () => {
+      if (browser.document?.visibilityState === 'hidden') flushNow();
     });
   }
 
