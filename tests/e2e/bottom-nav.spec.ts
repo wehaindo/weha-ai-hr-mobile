@@ -1,5 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import { loginAsAdmin, resetAppState } from './helpers/test-utils';
+import { loginWithMobile, mockEssApi } from './helpers/ess-mock';
+import { mockRequestsApi } from './helpers/requests-mock';
 
 // Bottom navigator (web/PWA narrow + Capacitor mobile). The default project
 // viewport is 1280×800 (sidebar mode), so these tests run at a phone width to
@@ -35,6 +37,8 @@ test.describe('bottom navigator (mobile viewport)', () => {
     await expect(page.getByTestId('nav-/dashboard')).toBeVisible();
     await expect(page.getByTestId('nav-/leave')).toBeVisible();
     await expect(page.getByTestId('nav-/requests')).toBeVisible();
+    // admin holds ess.approve → Approvals is promoted to a primary tab
+    await expect(page.getByTestId('nav-/approvals')).toBeVisible();
     await expect(page.getByTestId('more-tab')).toBeVisible();
     await expect(page.getByTestId('profile-tab')).toBeVisible();
     // non-primary pages never render as direct tabs
@@ -75,5 +79,25 @@ test.describe('bottom navigator (mobile viewport)', () => {
 
     await page.getByTestId('profile-logout').click();
     await expect(page.getByTestId('user-grid')).toBeVisible({ timeout: 30000 });
+  });
+
+  test('shows the pending-approvals badge on the Approvals tab', async ({ page }) => {
+    await resetAppState(page);
+    await mockEssApi(page);
+    const inbox = [1, 2, 3].map((n) => ({
+      requestId: `req-${n}`,
+      requestNo: `ESS-REQ-2026-00030${n}`,
+      type: 'LEAVE',
+      employee: { id: 'e-2', name: 'Staff Member', department: 'Operations' },
+      submittedAt: '2026-10-25T01:00:00.000Z',
+      ageDays: 1,
+      hasAttachments: false,
+    }));
+    await mockRequestsApi(page, { inbox });
+    await loginWithMobile(page);
+
+    await expect(page.getByTestId('dashboard')).toBeVisible({ timeout: 30000 });
+    await expect(page.getByTestId('approvals-badge')).toHaveText('3', { timeout: 15000 });
+    await expect(page.getByTestId('nav-/approvals')).toBeVisible();
   });
 });

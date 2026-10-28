@@ -31,6 +31,8 @@ export interface NavItem {
   public?: boolean;
   /** Primary tab in the bottom navigator (mobile layouts); unflagged items live under "More" */
   mobile?: boolean;
+  /** Primary bottom-nav tab only when its permission passes (e.g. Approvals for managers) */
+  mobileIfPermitted?: boolean;
 }
 
 export const NAV_ITEMS: NavItem[] = [
@@ -38,7 +40,7 @@ export const NAV_ITEMS: NavItem[] = [
   { label: 'Leave', href: '/leave', icon: CalendarDays, permission: 'ess.use', mobile: true },
   { label: 'Requests', href: '/requests', icon: Inbox, permission: 'ess.use', mobile: true },
   { label: 'Profile', href: '/profile', icon: User, permission: 'ess.use' },
-  { label: 'Approvals', href: '/approvals', icon: ShieldCheck, permission: 'ess.approve' },
+  { label: 'Approvals', href: '/approvals', icon: ShieldCheck, permission: 'ess.approve', mobileIfPermitted: true },
   { label: 'Manager', href: '/manager', icon: Users, permission: 'ess.approve' },
   { label: 'Payslips', href: '/payslips', icon: Wallet, permission: 'ess.use' },
   { label: 'Transactions', href: '/transactions', icon: Receipt, permission: 'transactions.use' },

@@ -51,4 +51,11 @@ describe('nav.config build-target gating', () => {
     const primary = NAV_ITEMS.filter((i) => i.mobile).map((i) => i.href);
     expect(primary).toEqual(['/dashboard', '/leave', '/requests']);
   });
+
+  it('promotes Approvals to a primary bottom-nav tab only when permitted', async () => {
+    const { NAV_ITEMS } = await loadNav('web');
+    const approvals = NAV_ITEMS.find((i) => i.href === '/approvals');
+    expect(approvals?.mobileIfPermitted).toBe(true);
+    expect(approvals?.permission).toBe('ess.approve');
+  });
 });
