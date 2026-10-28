@@ -73,6 +73,34 @@ contextBridge.exposeInMainWorld('deviceBridge', {
       ipcRenderer.invoke('cloud:google-oauth', { authorizeUrl, ...options }),
   },
 
+  // FCM push: Electron does not implement the Push API (and packaged builds are
+  // served over the insecure app:// origin), so a registration token cannot be
+  // acquired. isSupported=false / getToken=null make the app fall back to local
+  // notify(). Notification permission still works for those local notifications.
+  // Reached via globalThis so preload compiles under electron/tsconfig (no DOM lib).
+  push: {
+    isSupported: async () => false,
+    getPermission: async () => {
+      const notification = (
+        globalThis as unknown as {
+          Notification?: { permission: 'default' | 'granted' | 'denied' };
+        }
+      ).Notification;
+      return notification ? notification.permission : 'unsupported';
+    },
+    requestPermission: async (): Promise<'default' | 'granted' | 'denied' | 'unsupported'> => {
+      const notification = (
+        globalThis as unknown as {
+          Notification?: { requestPermission(): Promise<'default' | 'granted' | 'denied'> };
+        }
+      ).Notification;
+      return notification ? notification.requestPermission() : 'unsupported';
+    },
+    getToken: async () => null,
+    onMessage: () => () => {},
+    unregister: async () => {},
+  },
+
   backup: {
     saveToFile: () => ipcRenderer.invoke('backup:save-to-file'),
     openFile: () => ipcRenderer.invoke('backup:open-file'),

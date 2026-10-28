@@ -119,7 +119,18 @@ export interface DeviceBridgeEventMap {
   'sync:status': (payload: { queueDepth: number; online: boolean }) => void;
   'realtime:status': (payload: { status: RealtimeStatus; error?: string }) => void;
   'realtime:command': (payload: { command: string; payload?: unknown }) => void;
+  'push:message': (payload: PushMessage) => void;
 }
+
+/** A foreground push message delivered while the app is open. */
+export interface PushMessage {
+  title?: string;
+  body?: string;
+  data?: Record<string, string>;
+}
+
+/** Permission state for notifications/push, or 'unsupported' on platforms with no push. */
+export type PushPermission = 'default' | 'granted' | 'denied' | 'unsupported';
 
 export interface DeviceBridge {
   readonly platform: PlatformKind;
@@ -211,6 +222,20 @@ export interface DeviceBridge {
      * Electron-only; web/Capacitor throw (OAuth needs a backend).
      */
     googleOAuth(authorizeUrl: string, options?: { port?: number; timeoutMs?: number }): Promise<OAuthTokenResult>;
+  };
+  push: {
+    /** Whether FCM push is available on this platform (false → app falls back to local notify). */
+    isSupported(): Promise<boolean>;
+    /** Current notification permission ('unsupported' where push does not exist). */
+    getPermission(): Promise<PushPermission>;
+    /** Request notification permission; resolves to the resulting state. */
+    requestPermission(): Promise<PushPermission>;
+    /** Acquire (or reuse) the FCM registration token; null when unavailable/denied. */
+    getToken(): Promise<string | null>;
+    /** Subscribe to foreground push messages; returns an unsubscribe function. */
+    onMessage(listener: (message: PushMessage) => void): () => void;
+    /** Delete the FCM registration token and stop push on this device. */
+    unregister(): Promise<void>;
   };
   backup: {
     /**

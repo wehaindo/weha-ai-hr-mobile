@@ -7,6 +7,7 @@ import { runMigrations } from '../db/migrate';
 import { frameworkMigrations } from '../db/migrations';
 import { RealtimeClient, type RealtimeSocket } from '../integration/realtime/realtime-client';
 import { createRendererDisplay } from './renderer-display';
+import { createRendererPush } from './renderer-push';
 import { createRendererLocation } from './renderer-location';
 import type {
   AppInfo,
@@ -182,7 +183,6 @@ export async function createRendererBridge(platform: PlatformKind): Promise<Devi
     },
 
     display: createRendererDisplay(),
-    location: createRendererLocation(),
 
     print: {
       async raw(): Promise<void> {
@@ -210,6 +210,23 @@ export async function createRendererBridge(platform: PlatformKind): Promise<Devi
     },
 
     realtime: createRendererRealtime(emitter),
+
+    push:
+      platform === 'capacitor'
+        ? createRendererPush('capacitor')
+        : platform === 'web'
+          ? createRendererPush('web')
+          : // Electron uses the preload bridge; defensive no-op if reached here.
+            {
+              isSupported: async () => false,
+              getPermission: async () => 'unsupported' as const,
+              requestPermission: async () => 'unsupported' as const,
+              getToken: async () => null,
+              onMessage: () => () => undefined,
+              unregister: async () => undefined,
+            },
+
+    location: createRendererLocation(),
 
     cloud: {
       async request(req: CloudRequest): Promise<CloudResponse> {

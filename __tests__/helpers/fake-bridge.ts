@@ -122,6 +122,44 @@ export async function createFakeBridge(): Promise<FakeBridgeHandle> {
       },
     },
 
+    push: {
+      async isSupported() {
+        return false;
+      },
+      async getPermission() {
+        return 'unsupported' as const;
+      },
+      async requestPermission() {
+        return 'unsupported' as const;
+      },
+      async getToken() {
+        return null;
+      },
+      onMessage() {
+        return () => undefined;
+      },
+      async unregister() {
+        /* no-op in tests */
+      },
+    },
+
+    location: {
+      async permission() {
+        return 'granted' as const;
+      },
+      async requestPermission() {
+        return 'granted' as const;
+      },
+      async getCurrent() {
+        return {
+          latitude: -6.2088,
+          longitude: 106.8456,
+          accuracyMeters: 10,
+          capturedAt: new Date().toISOString(),
+        };
+      },
+    },
+
     backup: {
       async saveToFile() {
         throw new Error('backup not available in tests');
@@ -140,23 +178,6 @@ export async function createFakeBridge(): Promise<FakeBridgeHandle> {
       },
       async isOpen() {
         return false;
-      },
-    },
-
-    location: {
-      async permission() {
-        return 'granted' as const;
-      },
-      async requestPermission() {
-        return 'granted' as const;
-      },
-      async getCurrent() {
-        return {
-          latitude: -6.2088,
-          longitude: 106.8456,
-          accuracyMeters: 10,
-          capturedAt: new Date().toISOString(),
-        };
       },
     },
 

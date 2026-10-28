@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { redirect, usePathname } from 'next/navigation';
-import { SettingsIcon, SparklesIcon, UsersIcon, InfoIcon, CpuIcon, FileTextIcon, PlugIcon, CloudIcon, RadioIcon, CloudSyncIcon, HomeIcon, LayoutDashboardIcon, ReceiptIcon, ShieldIcon, SaveIcon, MicIcon, ArchiveIcon, FlaskConical } from 'lucide-react';
+import { SettingsIcon, SparklesIcon, UsersIcon, InfoIcon, CpuIcon, FileTextIcon, PlugIcon, CloudIcon, RadioIcon, CloudSyncIcon, HomeIcon, LayoutDashboardIcon, ReceiptIcon, ShieldIcon, SaveIcon, MicIcon, ArchiveIcon, FlaskConical, BellIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import deviceConfig, { type ModuleKey } from '@/device.config';
 
@@ -20,6 +20,7 @@ const TABS: { href: string; label: string; icon: typeof HomeIcon; module?: Modul
   { href: '/settings/cloud-sync', label: 'Cloud Sync', icon: CloudSyncIcon, module: 'cloud' },
   { href: '/settings/ai-voice', label: 'Ai Voice', icon: MicIcon, module: 'aiVoice' },
   { href: '/settings/realtime', label: 'Realtime', icon: RadioIcon, module: 'realtime' },
+  { href: '/settings/push', label: 'Push (FCM)', icon: BellIcon, module: 'push' },
   { href: '/settings/backup', label: 'Backup', icon: SaveIcon, module: 'backup' },
   { href: '/settings/retention', label: 'Data Retention', icon: ArchiveIcon, module: 'retention' },
   { href: '/settings/appearance', label: 'Appearance', icon: SparklesIcon },
