@@ -2,10 +2,11 @@
 
 // Bottom navigator shown instead of the sidebar on web/PWA (narrow) and
 // Capacitor mobile. Primary tabs are the nav.config entries flagged
-// `mobile: true` (plus `mobileIfPermitted` ones like Approvals for managers);
-// the rest live under a "More" tab, and a Profile tab opens a bottom sheet
-// (theme + sign out, replacing the desktop header controls). Rendered
-// in-flow by AppShell so content never hides behind it.
+// `mobile: true`; the rest live under a "More" tab, and a Profile tab opens
+// a bottom sheet (theme + sign out, replacing the desktop header controls).
+// Approvals is intentionally NOT a tab — managers reach it from the shield
+// icon in the title row (top right). Rendered in-flow by AppShell so content
+// never hides behind it.
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -26,8 +27,8 @@ export default function BottomNav({
   const can = useAuthStore((s) => s.can);
 
   const permitted = navItemsForTarget().filter((item) => !item.permission || can(item.permission));
-  const items = permitted.filter((item) => item.mobile || item.mobileIfPermitted);
-  const moreItems = permitted.filter((item) => !item.mobile && !item.mobileIfPermitted);
+  const items = permitted.filter((item) => item.mobile);
+  const moreItems = permitted.filter((item) => !item.mobile);
   const moreActive = moreItems.some(
     (item) => pathname === item.href || pathname.startsWith(`${item.href}/`)
   );

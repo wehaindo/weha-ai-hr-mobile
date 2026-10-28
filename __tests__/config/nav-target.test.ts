@@ -52,10 +52,11 @@ describe('nav.config build-target gating', () => {
     expect(primary).toEqual(['/dashboard', '/leave', '/requests']);
   });
 
-  it('promotes Approvals to a primary bottom-nav tab only when permitted', async () => {
+  it('keeps Approvals out of the primary bottom-nav tabs', async () => {
     const { NAV_ITEMS } = await loadNav('web');
     const approvals = NAV_ITEMS.find((i) => i.href === '/approvals');
-    expect(approvals?.mobileIfPermitted).toBe(true);
+    // Managers reach Approvals from the shield icon in the title row.
+    expect(approvals?.mobile).toBeUndefined();
     expect(approvals?.permission).toBe('ess.approve');
   });
 });

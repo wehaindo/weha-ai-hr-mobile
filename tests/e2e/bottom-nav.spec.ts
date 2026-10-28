@@ -37,10 +37,10 @@ test.describe('bottom navigator (mobile viewport)', () => {
     await expect(page.getByTestId('nav-/dashboard')).toBeVisible();
     await expect(page.getByTestId('nav-/leave')).toBeVisible();
     await expect(page.getByTestId('nav-/requests')).toBeVisible();
-    // admin holds ess.approve → Approvals is promoted to a primary tab
-    await expect(page.getByTestId('nav-/approvals')).toBeVisible();
     await expect(page.getByTestId('more-tab')).toBeVisible();
     await expect(page.getByTestId('profile-tab')).toBeVisible();
+    // Approvals lives in the More sheet, not the bar (top-right shield instead)
+    await expect(page.getByTestId('nav-/approvals')).toHaveCount(0);
     // non-primary pages never render as direct tabs
     await expect(page.getByTestId('nav-/settings')).toHaveCount(0);
     await expect(page.getByTestId('nav-/attendance')).toHaveCount(0);
@@ -55,6 +55,7 @@ test.describe('bottom navigator (mobile viewport)', () => {
     // More sheet holds the remaining permitted pages (admin sees Settings)
     await page.getByTestId('more-tab').click();
     await expect(page.getByTestId('more-sheet')).toBeVisible();
+    await expect(page.getByTestId('nav-/approvals')).toBeVisible();
     await page.getByTestId('nav-/settings').click();
     await expect(page.getByTestId('settings-page')).toBeVisible();
     await expect(page.getByTestId('page-title')).toHaveText('Settings');
@@ -97,9 +98,10 @@ test.describe('bottom navigator (mobile viewport)', () => {
     await loginWithMobile(page);
 
     await expect(page.getByTestId('dashboard')).toBeVisible({ timeout: 30000 });
-    // chip lives in the title row (top right), not on the Approvals tab
+    // shield icon + count sits in the title row (top right), not on the bar
     await expect(page.getByTestId('approvals-status')).toHaveText('3', { timeout: 15000 });
-    await expect(page.getByTestId('approvals-badge')).toHaveCount(0);
+    await expect(page.getByTestId('approvals-status-count')).toBeVisible();
+    await expect(page.getByTestId('nav-/approvals')).toHaveCount(0);
     const chip = await page.getByTestId('approvals-status').boundingBox();
     const bar = await page.getByTestId('bottom-nav').boundingBox();
     expect(chip && bar && chip.y < bar.y).toBe(true);

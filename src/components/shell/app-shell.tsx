@@ -108,10 +108,16 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                 <Link
                   href="/approvals"
                   data-testid="approvals-status"
-                  className="inline-flex items-center gap-1 rounded-full border px-2 py-1 text-xs font-medium text-muted-foreground hover:bg-muted"
+                  aria-label={`${pendingApprovals} approvals waiting`}
+                  className="relative rounded-md p-2 text-muted-foreground hover:bg-muted"
                 >
-                  <ShieldCheckIcon className="size-3.5" aria-hidden />
-                  {pendingApprovals > 9 ? '9+' : pendingApprovals}
+                  <ShieldCheckIcon className="size-5" />
+                  <span
+                    data-testid="approvals-status-count"
+                    className="absolute -top-0.5 -right-0.5 flex min-w-4 justify-center rounded-full bg-destructive px-1 text-[10px] font-semibold leading-4 text-destructive-foreground"
+                  >
+                    {pendingApprovals > 9 ? '9+' : pendingApprovals}
+                  </span>
                 </Link>
               )}
               <button
