@@ -81,7 +81,7 @@ test.describe('bottom navigator (mobile viewport)', () => {
     await expect(page.getByTestId('user-grid')).toBeVisible({ timeout: 30000 });
   });
 
-  test('shows the pending-approvals badge on the Approvals tab', async ({ page }) => {
+  test('shows the pending-approvals chip top right for managers', async ({ page }) => {
     await resetAppState(page);
     await mockEssApi(page);
     const inbox = [1, 2, 3].map((n) => ({
@@ -97,7 +97,23 @@ test.describe('bottom navigator (mobile viewport)', () => {
     await loginWithMobile(page);
 
     await expect(page.getByTestId('dashboard')).toBeVisible({ timeout: 30000 });
-    await expect(page.getByTestId('approvals-badge')).toHaveText('3', { timeout: 15000 });
-    await expect(page.getByTestId('nav-/approvals')).toBeVisible();
+    // chip lives in the title row (top right), not on the Approvals tab
+    await expect(page.getByTestId('approvals-status')).toHaveText('3', { timeout: 15000 });
+    await expect(page.getByTestId('approvals-badge')).toHaveCount(0);
+    const chip = await page.getByTestId('approvals-status').boundingBox();
+    const bar = await page.getByTestId('bottom-nav').boundingBox();
+    expect(chip && bar && chip.y < bar.y).toBe(true);
+  });
+
+  test('bell opens the notifications sheet with an honest empty state', async ({ page }) => {
+    await startOnMobile(page);
+
+    await expect(page.getByTestId('notifications-button')).toBeVisible();
+    await expect(page.getByTestId('notifications-badge')).toHaveCount(0);
+
+    await page.getByTestId('notifications-button').click();
+    await expect(page.getByTestId('notifications-sheet')).toBeVisible();
+    await expect(page.getByTestId('notifications-empty')).toContainText('No notifications yet');
+    await expect(page.getByTestId('notifications-mark-read')).toHaveCount(0);
   });
 });

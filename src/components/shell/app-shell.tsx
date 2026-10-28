@@ -1,9 +1,12 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
+import { BellIcon, ShieldCheckIcon } from 'lucide-react';
 import { findNavItem, isFullscreenRoute, isPublicRoute, routeModule, routePermission } from '@/app/nav.config';
 import { useAuthStore } from '@/stores/auth';
+import { useNotifications, unreadNotificationCount } from '@/stores/notifications';
 import deviceConfig from '@/device.config';
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar';
 import AppSidebar from './app-sidebar';
@@ -12,7 +15,9 @@ import TouchKeyboard from './touch-keyboard-gate';
 import BottomNav from './bottom-nav';
 import ProfileSheet from './profile-sheet';
 import MoreSheet from './more-sheet';
+import NotificationsSheet from './notifications-sheet';
 import { useBottomNav } from '@/hooks/use-bottom-nav';
+import { usePendingApprovals } from '@/hooks/use-pending-approvals';
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -23,6 +28,10 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const bottomNav = useBottomNav();
   const [profileOpen, setProfileOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const pendingApprovals = usePendingApprovals();
+  const notifications = useNotifications((s) => s.items);
+  const unreadNotifications = unreadNotificationCount(notifications);
 
   // Restore collapsed state persisted by SidebarProvider (sidebar_state cookie).
   useEffect(() => {
@@ -90,16 +99,46 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     return (
       <div className="flex h-dvh flex-col overflow-hidden">
         <div className="flex-1 overflow-auto bg-muted/30" data-testid="main-content">
-          <div className="px-4 pt-4">
+          <div className="flex items-center justify-between gap-2 px-4 pt-4">
             <h1 className="truncate text-lg font-semibold" data-testid="page-title">
               {navItem?.label ?? ''}
             </h1>
+            <div className="flex shrink-0 items-center gap-1">
+              {pendingApprovals > 0 && (
+                <Link
+                  href="/approvals"
+                  data-testid="approvals-status"
+                  className="inline-flex items-center gap-1 rounded-full border px-2 py-1 text-xs font-medium text-muted-foreground hover:bg-muted"
+                >
+                  <ShieldCheckIcon className="size-3.5" aria-hidden />
+                  {pendingApprovals > 9 ? '9+' : pendingApprovals}
+                </Link>
+              )}
+              <button
+                type="button"
+                data-testid="notifications-button"
+                onClick={() => setNotificationsOpen(true)}
+                aria-label="Notifications"
+                className="relative rounded-md p-2 text-muted-foreground hover:bg-muted"
+              >
+                <BellIcon className="size-5" />
+                {unreadNotifications > 0 && (
+                  <span
+                    data-testid="notifications-badge"
+                    className="absolute -top-0.5 -right-0.5 flex min-w-4 justify-center rounded-full bg-destructive px-1 text-[10px] font-semibold leading-4 text-destructive-foreground"
+                  >
+                    {unreadNotifications > 9 ? '9+' : unreadNotifications}
+                  </span>
+                )}
+              </button>
+            </div>
           </div>
           <div className="p-4">{children}</div>
         </div>
         <BottomNav onOpenProfile={() => setProfileOpen(true)} onOpenMore={() => setMoreOpen(true)} />
         <ProfileSheet open={profileOpen} onOpenChange={setProfileOpen} />
         <MoreSheet open={moreOpen} onOpenChange={setMoreOpen} />
+        <NotificationsSheet open={notificationsOpen} onOpenChange={setNotificationsOpen} />
       </div>
     );
   }

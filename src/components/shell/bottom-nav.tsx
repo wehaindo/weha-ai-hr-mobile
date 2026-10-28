@@ -7,14 +7,11 @@
 // (theme + sign out, replacing the desktop header controls). Rendered
 // in-flow by AppShell so content never hides behind it.
 
-import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { CircleUser, MoreHorizontal } from 'lucide-react';
 import { navItemsForTarget } from '@/app/nav.config';
 import { useAuthStore } from '@/stores/auth';
-import { useBridge } from '@/platform';
-import { createEssRequestsApi } from '@/integration/ess/requests';
 import { useSyncState } from './sync-indicator';
 import { cn } from '@/lib/utils';
 
@@ -27,7 +24,6 @@ export default function BottomNav({
 }) {
   const pathname = usePathname();
   const can = useAuthStore((s) => s.can);
-  const bridge = useBridge();
 
   const permitted = navItemsForTarget().filter((item) => !item.permission || can(item.permission));
   const items = permitted.filter((item) => item.mobile || item.mobileIfPermitted);
@@ -36,35 +32,6 @@ export default function BottomNav({
     (item) => pathname === item.href || pathname.startsWith(`${item.href}/`)
   );
   const syncState = useSyncState();
-
-  // Pending-approval badge for managers — best-effort, refreshed on navigation
-  // so a decision on /approvals clears the count on the way back. The inbox is
-  // cursor-paginated, so drain pages (cap 5) until the badge maxes out at 9+.
-  const canApprove = can('ess.approve');
-  const [pendingApprovals, setPendingApprovals] = useState(0);
-  useEffect(() => {
-    if (!canApprove) return;
-    let cancelled = false;
-    void (async () => {
-      try {
-        const api = await createEssRequestsApi(bridge);
-        let cursor: string | undefined;
-        let total = 0;
-        for (let page = 0; page < 5; page += 1) {
-          const result = await api.getInbox({}, cursor);
-          total += result.items.length;
-          if (!result.nextCursor || total > 9) break;
-          cursor = result.nextCursor;
-        }
-        if (!cancelled) setPendingApprovals(total);
-      } catch {
-        if (!cancelled) setPendingApprovals(0);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [bridge, canApprove, pathname]);
 
   return (
     <nav
@@ -108,14 +75,6 @@ export default function BottomNav({
           >
             <span className="relative">
               <item.icon className="size-5 shrink-0" />
-              {item.href === '/approvals' && pendingApprovals > 0 && (
-                <span
-                  data-testid="approvals-badge"
-                  className="absolute -top-1.5 -right-2 flex min-w-4 justify-center rounded-full bg-destructive px-1 text-[10px] font-semibold leading-4 text-destructive-foreground"
-                >
-                  {pendingApprovals > 9 ? '9+' : pendingApprovals}
-                </span>
-              )}
               {isSync && (
                 <span
                   className={cn(

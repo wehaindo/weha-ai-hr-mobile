@@ -5,6 +5,7 @@
 // denied permission) is not an error; the app falls back to local notify().
 
 import type { DeviceBridge, PushMessage, PushPermission } from '@/platform';
+import { useNotifications } from '@/stores/notifications';
 import { registerFcmToken } from './register';
 
 export interface PushStatus {
@@ -55,9 +56,10 @@ export async function startPush(bridge: DeviceBridge): Promise<PushStatus> {
     lastRegister = await registerFcmToken(bridge, token);
   }
 
-  // Wire foreground messages → local notification (idempotent).
+  // Wire foreground messages → local notification + in-app bell (idempotent).
   if (!unsubscribeMessages) {
     unsubscribeMessages = bridge.push.onMessage((message) => {
+      useNotifications.getState().add(message);
       void bridge.notify(message.title ?? 'Notification', message.body ?? '');
     });
   }
