@@ -5,6 +5,7 @@ export const IPC_CHANNELS = {
   DB_QUERY: 'db:query',
   DB_EXECUTE: 'db:execute',
   DB_BATCH: 'db:batch',
+  DB_FLUSH: 'db:flush',
   KV_GET: 'kv:get',
   KV_SET: 'kv:set',
   KV_REMOVE: 'kv:remove',

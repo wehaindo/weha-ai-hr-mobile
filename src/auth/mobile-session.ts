@@ -71,10 +71,14 @@ export async function saveMobileSession(
       now,
     ]
   );
+  // Session writes are auth-critical: a reload right after login must see the
+  // row, so bypass the engine's save debounce and make it durable now.
+  await bridge.db.flush();
 }
 
 export async function clearMobileSession(bridge: DeviceBridge): Promise<void> {
   await bridge.db.execute('DELETE FROM mobile_auth_sessions WHERE id = ?', [SESSION_ROW_ID]);
+  await bridge.db.flush();
 }
 
 /** Store a freshly issued token pair from any login/verify/refresh response. */

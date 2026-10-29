@@ -139,6 +139,9 @@ export async function createRendererBridge(platform: PlatformKind): Promise<Devi
         engine.batch(statements);
         emitDbChanged();
       },
+      async flush(): Promise<void> {
+        await engine.flush();
+      },
     },
 
     kv: {

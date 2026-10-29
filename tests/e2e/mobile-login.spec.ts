@@ -101,14 +101,41 @@ test.describe('mobile login (WEHA account)', () => {
     const calls = await mockMobileAuth(page);
 
     await openMobilePasswordForm(page);
+    // optional tenant slug field (multi-tenant servers) is present and empty by default
+    await expect(page.getByTestId('mobile-tenant')).toBeVisible();
     await page.getByTestId('mobile-submit').click();
 
     await expect(page.getByTestId('dashboard')).toBeVisible({ timeout: 30000 });
     await expect(page.getByTestId('page-title')).toHaveText('Dashboard');
 
-    // the framework received the credentials verbatim
+    // the framework received the credentials verbatim (no tenant → omitted)
     expect(calls.loginCalls).toHaveLength(1);
     expect(calls.loginCalls[0]).toMatchObject({ email: SESSION.user.email, password: 'secret-password' });
+    expect(calls.loginCalls[0]).not.toHaveProperty('tenantSlug');
+  });
+
+  test('remembers the tenant slug after a successful sign-in', async ({ page }) => {
+    await resetAppState(page);
+    const calls = await mockMobileAuth(page);
+
+    // type the tenant slug once
+    await page.getByTestId('toggle-mobile-login').click();
+    await page.getByTestId('mobile-email').fill(SESSION.user.email);
+    await page.getByTestId('mobile-password').fill('secret-password');
+    await page.getByTestId('mobile-tenant').fill('acme');
+    await page.getByTestId('mobile-submit').click();
+
+    await expect(page.getByTestId('dashboard')).toBeVisible({ timeout: 30000 });
+    expect(calls.loginCalls[0]).toMatchObject({ tenantSlug: 'acme' });
+
+    // sign out — the slug is a device setting, not a session, so it is kept
+    await page.getByTestId('user-menu').click();
+    await page.getByTestId('logout').click();
+    await expect(page.getByTestId('user-grid')).toBeVisible({ timeout: 30000 });
+
+    // reopen mobile login → the remembered slug is prefilled (type once)
+    await page.getByTestId('toggle-mobile-login').click();
+    await expect(page.getByTestId('mobile-tenant')).toHaveValue('acme');
   });
 
   test('rejects invalid credentials and shows the server message', async ({ page }) => {

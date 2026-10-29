@@ -3,9 +3,11 @@
 // Email + password (or one-time email code) sign-in against weha-framework's
 // mobile auth. Presentational like PasswordLogin: it owns input state and calls
 // back with the credentials; the parent (LoginScreen) performs the auth +
-// lockout handling.
+// lockout handling. The tenant slug is prefilled from the value remembered on
+// the last successful sign-in, so it only needs to be typed once (or edited to
+// switch tenants) — see getMobileTenantSlug / persistUsedTenantSlug.
 
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -15,12 +17,14 @@ export type MobileLoginView = 'password' | 'otp';
 interface MobileLoginProps {
   view: MobileLoginView;
   onViewChange: (view: MobileLoginView) => void;
-  onSubmit: (email: string, password: string) => Promise<void> | void;
-  onSubmitOtp: (email: string, otp: string) => Promise<void> | void;
-  onRequestCode: (email: string) => Promise<{ devCode?: string }> | { devCode?: string };
+  onSubmit: (email: string, password: string, tenantSlug?: string) => Promise<void> | void;
+  onSubmitOtp: (email: string, otp: string, tenantSlug?: string) => Promise<void> | void;
+  onRequestCode: (email: string, tenantSlug?: string) => Promise<{ devCode?: string }> | { devCode?: string };
   onCancel: () => void;
   error?: string;
   busy?: boolean;
+  /** Tenant slug remembered from the last successful sign-in (prefills the field). */
+  defaultTenantSlug?: string;
 }
 
 export default function MobileLogin({
@@ -32,27 +36,36 @@ export default function MobileLogin({
   onCancel,
   error,
   busy,
+  defaultTenantSlug,
 }: MobileLoginProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [otp, setOtp] = useState('');
+  const [tenant, setTenant] = useState('');
   const [sending, setSending] = useState(false);
   const [codeSent, setCodeSent] = useState(false);
   const [devCode, setDevCode] = useState<string | undefined>(undefined);
   const [sendError, setSendError] = useState<string | undefined>(undefined);
 
+  // Prefill the remembered tenant slug. Only fills while the field is empty so
+  // it never clobbers input (the kv read can resolve after mount).
+  useEffect(() => {
+    if (defaultTenantSlug && !tenant) setTenant(defaultTenantSlug);
+  }, [defaultTenantSlug, tenant]);
+
   const emailReady = !!email.trim();
+  const tenantSlug = tenant.trim() || undefined;
 
   function handlePasswordSubmit(e: FormEvent): void {
     e.preventDefault();
     if (!emailReady || !password) return;
-    void onSubmit(email.trim(), password);
+    void onSubmit(email.trim(), password, tenantSlug);
   }
 
   function handleOtpSubmit(e: FormEvent): void {
     e.preventDefault();
     if (!emailReady || otp.trim().length < 4) return;
-    void onSubmitOtp(email.trim(), otp.trim());
+    void onSubmitOtp(email.trim(), otp.trim(), tenantSlug);
   }
 
   async function handleSendCode(): Promise<void> {
@@ -60,7 +73,7 @@ export default function MobileLogin({
     setSending(true);
     setSendError(undefined);
     try {
-      const result = await onRequestCode(email.trim());
+      const result = await onRequestCode(email.trim(), tenantSlug);
       setCodeSent(true);
       setDevCode(result?.devCode);
     } catch (err) {
@@ -100,6 +113,22 @@ export default function MobileLogin({
             setDevCode(undefined);
           }}
         />
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="mobile-tenant">Tenant (optional)</Label>
+        <Input
+          id="mobile-tenant"
+          data-testid="mobile-tenant"
+          autoCapitalize="none"
+          autoCorrect="off"
+          placeholder="e.g. default"
+          value={tenant}
+          onChange={(e) => setTenant(e.target.value)}
+        />
+        <p className="text-xs text-muted-foreground">
+          Required by multi-tenant servers; the value is remembered after a successful sign-in.
+        </p>
       </div>
 
       {view === 'password' ? (

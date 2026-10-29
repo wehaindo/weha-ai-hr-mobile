@@ -21,6 +21,7 @@ contextBridge.exposeInMainWorld('deviceBridge', {
     query: (sql: string, params?: unknown[]) => ipcRenderer.invoke('db:query', sql, params),
     execute: (sql: string, params?: unknown[]) => ipcRenderer.invoke('db:execute', sql, params),
     batch: (statements: unknown[]) => ipcRenderer.invoke('db:batch', statements),
+    flush: () => ipcRenderer.invoke('db:flush'),
   },
 
   kv: {

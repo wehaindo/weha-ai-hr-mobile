@@ -9,7 +9,7 @@ import {
   type MobileLoginResult,
   type MobileSessionTokens,
 } from '@/integration/mobile-auth/client';
-import { getMobileTenantSlug, persistMobileTokens } from './mobile-session';
+import { getMobileTenantSlug, persistMobileTokens, MOBILE_TENANT_SLUG_KEY } from './mobile-session';
 import { SYSTEM_ROLES } from './permissions';
 
 export interface LoginUser {
@@ -167,11 +167,13 @@ async function completeMobileLogin(
 export async function authenticateWithMobile(
   bridge: DeviceBridge,
   email: string,
-  password: string
+  password: string,
+  tenantSlugOverride?: string
 ): Promise<SessionUser> {
   const client = await createMobileAuthClient(bridge);
-  const tenantSlug = await getMobileTenantSlug(bridge);
+  const tenantSlug = await resolveTenantSlug(bridge, tenantSlugOverride);
   const result: MobileLoginResult = await client.login(email.trim(), password, tenantSlug || undefined);
+  await persistUsedTenantSlug(bridge, tenantSlug);
   return completeMobileLogin(bridge, result, result.user);
 }
 
@@ -179,20 +181,40 @@ export async function authenticateWithMobile(
 export async function authenticateWithMobileOtp(
   bridge: DeviceBridge,
   email: string,
-  otp: string
+  otp: string,
+  tenantSlugOverride?: string
 ): Promise<SessionUser> {
   const client = await createMobileAuthClient(bridge);
-  const tenantSlug = await getMobileTenantSlug(bridge);
+  const tenantSlug = await resolveTenantSlug(bridge, tenantSlugOverride);
   const result: MobileLoginResult = await client.verifyOtp(email.trim(), otp, tenantSlug || undefined);
+  await persistUsedTenantSlug(bridge, tenantSlug);
   return completeMobileLogin(bridge, result, result.user);
 }
 
 /** Request a login code. Returns `devCode` in non-production (echoed by the framework). */
 export async function requestMobileLoginCode(
   bridge: DeviceBridge,
-  email: string
+  email: string,
+  tenantSlugOverride?: string
 ): Promise<{ sent: true; devCode?: string }> {
   const client = await createMobileAuthClient(bridge);
-  const tenantSlug = await getMobileTenantSlug(bridge);
+  const tenantSlug = await resolveTenantSlug(bridge, tenantSlugOverride);
   return client.requestOtp(email.trim(), tenantSlug || undefined);
+}
+
+/** Login-screen tenant field wins; otherwise the slug saved in Settings. */
+async function resolveTenantSlug(bridge: DeviceBridge, override?: string): Promise<string> {
+  const trimmed = override?.trim();
+  if (trimmed) return trimmed;
+  return getMobileTenantSlug(bridge);
+}
+
+/** Remember the slug that actually worked so OTP/refresh reuse it. */
+async function persistUsedTenantSlug(bridge: DeviceBridge, tenantSlug: string): Promise<void> {
+  if (!tenantSlug) return;
+  try {
+    await bridge.kv.set(MOBILE_TENANT_SLUG_KEY, tenantSlug);
+  } catch {
+    /* remembering is best-effort */
+  }
 }
