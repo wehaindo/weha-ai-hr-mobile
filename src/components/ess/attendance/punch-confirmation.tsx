@@ -97,6 +97,29 @@ export function PunchConfirmation({
               value: REJECTION_LABELS[confirmation.reason] ?? confirmation.reason,
               testid: 'confirmation-reason',
             },
+            ...(confirmation.geofence?.distanceMeters !== undefined
+              ? [
+                  {
+                    label: 'Distance',
+                    value:
+                      `${Math.round(confirmation.geofence.distanceMeters)} m from ` +
+                      `${confirmation.geofence.worksiteName ?? 'the worksite'}` +
+                      (confirmation.geofence.radiusMeters !== undefined
+                        ? ` · allowed ${confirmation.geofence.radiusMeters} m`
+                        : ''),
+                    testid: 'confirmation-distance',
+                  },
+                ]
+              : []),
+            ...(confirmation.geofence?.accuracyMeters !== undefined
+              ? [
+                  {
+                    label: 'GPS accuracy',
+                    value: `±${Math.round(confirmation.geofence.accuracyMeters)} m`,
+                    testid: 'confirmation-accuracy',
+                  },
+                ]
+              : []),
             { label: 'Submitted', value: confirmation.server ? 'Yes — server rejected it' : 'No — blocked on this device', testid: 'confirmation-submitted' },
           ]
         : [

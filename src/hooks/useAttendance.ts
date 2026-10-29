@@ -40,7 +40,18 @@ export type AttendanceMethodChoice = 'GPS' | 'QR';
 export type AttendanceConfirmation =
   | { kind: 'recorded'; event: AttendanceEventResult }
   | { kind: 'duplicate'; event: AttendanceEventResult }
-  | { kind: 'rejected'; reason: string; server: boolean }
+  | {
+      kind: 'rejected';
+      reason: string;
+      server: boolean;
+      /** Geofence diagnostics so "outside the area" shows by how much. */
+      geofence?: {
+        distanceMeters?: number;
+        accuracyMeters?: number;
+        radiusMeters?: number;
+        worksiteName?: string;
+      };
+    }
   | { kind: 'pending'; eventId: string; capturedAt: string };
 
 export interface AttendanceCaptureError {
@@ -348,7 +359,18 @@ export function useAttendance(): UseAttendance {
           status: 'rejected',
           rejectionReason: args.evaluation.reason,
         });
-        setConfirmation({ kind: 'rejected', reason: args.evaluation.reason, server: false });
+        const worksite = state.data.worksites.find((w) => w.id === args.evaluation.worksiteId);
+        setConfirmation({
+          kind: 'rejected',
+          reason: args.evaluation.reason,
+          server: false,
+          geofence: {
+            distanceMeters: args.evaluation.distanceMeters,
+            accuracyMeters: args.fix.accuracyMeters,
+            radiusMeters: worksite?.radiusMeters,
+            worksiteName: worksite?.name,
+          },
+        });
         await refresh();
         return;
       }
@@ -377,13 +399,22 @@ export function useAttendance(): UseAttendance {
       if (server) {
         if (server.status === 'ACCEPTED') setConfirmation({ kind: 'recorded', event: server });
         else if (server.status === 'DUPLICATE') setConfirmation({ kind: 'duplicate', event: server });
-        else setConfirmation({ kind: 'rejected', reason: server.rejectionReason ?? 'rejected', server: true });
+        else
+          setConfirmation({
+            kind: 'rejected',
+            reason: server.rejectionReason ?? 'rejected',
+            server: true,
+            geofence: {
+              distanceMeters: server.distanceMeters ?? undefined,
+              worksiteName: server.worksite?.name,
+            },
+          });
       } else {
         setConfirmation({ kind: 'pending', eventId: row.id, capturedAt: identity.capturedAt });
       }
       await refresh();
     },
-    [bridge, ensureApi, handleSessionExpired, refresh, session?.id, state.status]
+    [bridge, ensureApi, handleSessionExpired, refresh, session?.id, state]
   );
 
   const punchWithGps = useCallback(async (): Promise<void> => {

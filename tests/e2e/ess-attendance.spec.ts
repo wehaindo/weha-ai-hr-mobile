@@ -87,6 +87,10 @@ test.describe('ESS attendance', () => {
     await expect(page.getByTestId('punch-confirmation')).toHaveAttribute('data-kind', 'rejected');
     await expect(page.getByTestId('confirmation-reason')).toHaveText('Outside the authorized worksite area');
     await expect(page.getByTestId('confirmation-submitted')).toHaveText('No — blocked on this device');
+    // geofence diagnostics: how far from the worksite vs the allowed radius
+    await expect(page.getByTestId('confirmation-distance')).toContainText('allowed 100 m');
+    await expect(page.getByTestId('confirmation-distance')).toContainText(' m from ');
+    await expect(page.getByTestId('confirmation-accuracy')).toContainText('m');
 
     expect(calls.punchPosts).toHaveLength(0); // never submitted (BRD FR-03 REJECT policy)
     // the local rejection is preserved for the day view (FR-06 audit trail)
