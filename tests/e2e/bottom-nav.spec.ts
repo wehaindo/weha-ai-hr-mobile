@@ -69,13 +69,16 @@ test.describe('bottom navigator (mobile viewport)', () => {
     await expect(page.getByTestId('page-title')).toHaveText('Dashboard');
   });
 
-  test('profile tab opens the sheet with theme toggle and sign out', async ({ page }) => {
+  test('profile tab opens the sheet with theme toggle, push enable and sign out', async ({ page }) => {
     await startOnMobile(page);
 
     await page.getByTestId('profile-tab').click();
     await expect(page.getByTestId('profile-sheet')).toBeVisible();
     await expect(page.getByTestId('profile-name')).toBeVisible();
     await expect(page.getByTestId('theme-toggle')).toBeVisible();
+    // FCM enable is reachable from the Profile sheet (no Settings needed)
+    await expect(page.getByTestId('profile-push')).toBeVisible();
+    await expect(page.getByTestId('profile-push-toggle')).toBeVisible();
     await expect(page.getByTestId('profile-logout')).toBeVisible();
 
     await page.getByTestId('profile-logout').click();

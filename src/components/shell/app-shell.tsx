@@ -3,10 +3,9 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { BellIcon, ShieldCheckIcon } from 'lucide-react';
+import { ShieldCheckIcon } from 'lucide-react';
 import { findNavItem, isFullscreenRoute, isPublicRoute, routeModule, routePermission } from '@/app/nav.config';
 import { useAuthStore } from '@/stores/auth';
-import { useNotifications, unreadNotificationCount } from '@/stores/notifications';
 import deviceConfig from '@/device.config';
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar';
 import AppSidebar from './app-sidebar';
@@ -15,7 +14,7 @@ import TouchKeyboard from './touch-keyboard-gate';
 import BottomNav from './bottom-nav';
 import ProfileSheet from './profile-sheet';
 import MoreSheet from './more-sheet';
-import NotificationsSheet from './notifications-sheet';
+import NotificationsButton from './notifications-button';
 import { useBottomNav } from '@/hooks/use-bottom-nav';
 import { usePendingApprovals } from '@/hooks/use-pending-approvals';
 
@@ -28,10 +27,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const bottomNav = useBottomNav();
   const [profileOpen, setProfileOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
-  const [notificationsOpen, setNotificationsOpen] = useState(false);
   const pendingApprovals = usePendingApprovals();
-  const notifications = useNotifications((s) => s.items);
-  const unreadNotifications = unreadNotificationCount(notifications);
 
   // Restore collapsed state persisted by SidebarProvider (sidebar_state cookie).
   useEffect(() => {
@@ -94,7 +90,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const navItem = findNavItem(pathname);
 
   // Bottom navigator layout (web/PWA narrow + Capacitor mobile): no sidebar,
-  // no header — controls live in the Profile tab's bottom sheet.
+  // no header — controls live in the Profile tab's bottom sheet, with the
+  // notification bell on the title row.
   if (bottomNav) {
     return (
       <div className="flex h-dvh flex-col overflow-hidden">
@@ -120,23 +117,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                   </span>
                 </Link>
               )}
-              <button
-                type="button"
-                data-testid="notifications-button"
-                onClick={() => setNotificationsOpen(true)}
-                aria-label="Notifications"
-                className="relative rounded-md p-2 text-muted-foreground hover:bg-muted"
-              >
-                <BellIcon className="size-5" />
-                {unreadNotifications > 0 && (
-                  <span
-                    data-testid="notifications-badge"
-                    className="absolute -top-0.5 -right-0.5 flex min-w-4 justify-center rounded-full bg-destructive px-1 text-[10px] font-semibold leading-4 text-destructive-foreground"
-                  >
-                    {unreadNotifications > 9 ? '9+' : unreadNotifications}
-                  </span>
-                )}
-              </button>
+              <NotificationsButton />
             </div>
           </div>
           <div className="p-4">{children}</div>
@@ -144,7 +125,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         <BottomNav onOpenProfile={() => setProfileOpen(true)} onOpenMore={() => setMoreOpen(true)} />
         <ProfileSheet open={profileOpen} onOpenChange={setProfileOpen} />
         <MoreSheet open={moreOpen} onOpenChange={setMoreOpen} />
-        <NotificationsSheet open={notificationsOpen} onOpenChange={setNotificationsOpen} />
       </div>
     );
   }

@@ -20,6 +20,8 @@ export function registerDbIpc(getEngine: () => DatabaseEngine): void {
     broadcast('db:changed', {});
   });
 
+  // Persist pending writes immediately (bypasses the renderer engine's save
+  // debounce) — used for auth-critical session writes that must survive a reload.
   ipcMain.handle('db:flush', async () => {
     await getEngine().flush();
   });

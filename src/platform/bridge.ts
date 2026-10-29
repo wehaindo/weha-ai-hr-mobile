@@ -140,7 +140,10 @@ export interface DeviceBridge {
     execute(sql: string, params?: unknown[]): Promise<void>;
     /** Atomic multi-statement write (no interactive reads inside). */
     batch(statements: SqlStatement[]): Promise<void>;
-    /** Persist pending writes immediately (durable before navigation/reload). */
+    /**
+     * Persist pending writes immediately, bypassing the engine's save debounce.
+     * Auth-critical: a reload right after login must see the written row.
+     */
     flush(): Promise<void>;
   };
   kv: {

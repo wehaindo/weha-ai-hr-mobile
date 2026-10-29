@@ -1,8 +1,8 @@
 'use client';
 
-// Notifications sheet opened from the bell on the bottom-nav layout title
-// row: recent foreground FCM messages, unread highlighted, mark-all-read.
-// Honest empty state — push is opt-in (Settings → Push (FCM)).
+// Notifications sheet opened from the bell (mobile title row / desktop header):
+// recent foreground FCM messages, unread highlighted, mark-all-read. Honest
+// empty state — push is opt-in (enable it from the Profile sheet or Settings).
 
 import { BellOffIcon, CheckCheckIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -40,7 +40,7 @@ export default function NotificationsSheet({
         {items.length === 0 ? (
           <p className="px-4 pb-4 text-sm text-muted-foreground" data-testid="notifications-empty">
             No notifications yet. Push messages appear here while the app is
-            open — enable push in Settings → Push (FCM).
+            open — enable push from the Profile tab or Settings → Push (FCM).
           </p>
         ) : (
           <>

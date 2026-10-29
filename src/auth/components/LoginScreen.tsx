@@ -7,6 +7,7 @@ import deviceConfig from '@/device.config';
 import { useAuthStore } from '@/stores/auth';
 import { authenticate, authenticateWithCredentials, authenticateWithMobile, authenticateWithMobileOtp, fetchActiveUsers, requestMobileLoginCode, type LoginUser } from '../actions';
 import { MobileAuthError } from '@/integration/mobile-auth/client';
+import { getMobileTenantSlug } from '../mobile-session';
 import UserAvatar from './UserAvatar';
 import PinInput from './PinInput';
 import PasswordLogin from './PasswordLogin';
@@ -24,6 +25,7 @@ export default function LoginScreen() {
   const [selected, setSelected] = useState<LoginUser | null>(null);
   const [mode, setMode] = useState<'pin' | 'password' | 'mobile'>('pin');
   const [mobileView, setMobileView] = useState<MobileLoginView>('password');
+  const [defaultTenantSlug, setDefaultTenantSlug] = useState('');
   const [pwBusy, setPwBusy] = useState(false);
   const [mobileBusy, setMobileBusy] = useState(false);
   const [error, setError] = useState<string | undefined>(undefined);
@@ -51,6 +53,22 @@ export default function LoginScreen() {
     const timer = setTimeout(() => setLockSeconds((s) => s - 1), 1000);
     return () => clearTimeout(timer);
   }, [lockSeconds]);
+
+  // Load the tenant slug remembered from the last successful mobile sign-in so
+  // the field is prefilled (type once; edit only to switch tenants).
+  useEffect(() => {
+    let cancelled = false;
+    void getMobileTenantSlug(bridge)
+      .then((slug) => {
+        if (!cancelled) setDefaultTenantSlug(slug);
+      })
+      .catch(() => {
+        /* no remembered slug — field stays empty */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [bridge]);
 
   const handlePinSubmit = useCallback(
     async (pin: string) => {
@@ -185,6 +203,7 @@ export default function LoginScreen() {
             onCancel={() => switchMode('pin')}
             error={error}
             busy={mobileBusy}
+            defaultTenantSlug={defaultTenantSlug}
           />
         ) : loading ? (
           <div className="flex justify-center py-12">

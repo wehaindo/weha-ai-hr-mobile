@@ -3,9 +3,11 @@
 // Email + password (or one-time email code) sign-in against weha-framework's
 // mobile auth. Presentational like PasswordLogin: it owns input state and calls
 // back with the credentials; the parent (LoginScreen) performs the auth +
-// lockout handling.
+// lockout handling. The tenant slug is prefilled from the value remembered on
+// the last successful sign-in, so it only needs to be typed once (or edited to
+// switch tenants) — see getMobileTenantSlug / persistUsedTenantSlug.
 
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -21,6 +23,8 @@ interface MobileLoginProps {
   onCancel: () => void;
   error?: string;
   busy?: boolean;
+  /** Tenant slug remembered from the last successful sign-in (prefills the field). */
+  defaultTenantSlug?: string;
 }
 
 export default function MobileLogin({
@@ -32,6 +36,7 @@ export default function MobileLogin({
   onCancel,
   error,
   busy,
+  defaultTenantSlug,
 }: MobileLoginProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -41,6 +46,12 @@ export default function MobileLogin({
   const [codeSent, setCodeSent] = useState(false);
   const [devCode, setDevCode] = useState<string | undefined>(undefined);
   const [sendError, setSendError] = useState<string | undefined>(undefined);
+
+  // Prefill the remembered tenant slug. Only fills while the field is empty so
+  // it never clobbers input (the kv read can resolve after mount).
+  useEffect(() => {
+    if (defaultTenantSlug && !tenant) setTenant(defaultTenantSlug);
+  }, [defaultTenantSlug, tenant]);
 
   const emailReady = !!email.trim();
   const tenantSlug = tenant.trim() || undefined;

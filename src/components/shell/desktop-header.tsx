@@ -18,6 +18,7 @@ import ThemeToggle from './theme-toggle';
 import DisplayToggles from './display-toggles';
 import WindowControls from './window-controls';
 import SyncIndicator from './sync-indicator';
+import NotificationsButton from './notifications-button';
 import { useLogout } from '@/hooks/use-logout';
 
 function UserMenu({ user }: { user: SessionUser }) {
@@ -61,6 +62,7 @@ export default function DesktopHeader({ title }: { title?: string }) {
       </div>
       <SyncIndicator />
       <ThemeToggle />
+      <NotificationsButton />
       <DisplayToggles />
       {user && <UserMenu user={user} />}
       <WindowControls />

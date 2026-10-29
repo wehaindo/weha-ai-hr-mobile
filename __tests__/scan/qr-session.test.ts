@@ -39,7 +39,10 @@ function stubCanvasContext(): void {
     drawImage: vi.fn(),
     getImageData: () => ({ data: new Uint8ClampedArray(4), width: 1, height: 1 }),
   };
-  vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(ctx as unknown as CanvasRenderingContext2D);
+  // Re-type the spy as a loose mock: getContext's overloads (2d / webgl / webgpu…)
+  // shift across DOM/@types versions, so we avoid binding to a specific return type.
+  const spy = vi.spyOn(HTMLCanvasElement.prototype, 'getContext') as unknown as ReturnType<typeof vi.fn>;
+  spy.mockReturnValue(ctx);
 }
 
 describe('qr session', () => {

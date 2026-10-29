@@ -56,7 +56,7 @@ export async function startPush(bridge: DeviceBridge): Promise<PushStatus> {
     lastRegister = await registerFcmToken(bridge, token);
   }
 
-  // Wire foreground messages → local notification + in-app bell (idempotent).
+  // Wire foreground messages → in-app bell + local notification (idempotent).
   if (!unsubscribeMessages) {
     unsubscribeMessages = bridge.push.onMessage((message) => {
       useNotifications.getState().add(message);

@@ -27,6 +27,7 @@ import { migration0025EssPermissions } from './0025_ess_permissions';
 import { migration0026AttendanceQueue } from './0026_attendance_queue';
 import { migration0027EssApprovePermission } from './0027_ess_approve_permission';
 import { migration0028SeedDemoUser } from './0028_seed_demo_user';
+import { migration0029SampleAttendance } from './0029_sample_attendance';
 
 // Framework migrations — run on every platform before the app boots.
 // App-specific migrations: append here (create one file per migration).
@@ -59,4 +60,5 @@ export const frameworkMigrations: Migration[] = [
   migration0026AttendanceQueue,
   migration0027EssApprovePermission,
   migration0028SeedDemoUser,
+  migration0029SampleAttendance,
 ];

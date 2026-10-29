@@ -94,6 +94,7 @@ Change it immediately on a real device.
 
 ## Docs
 
+- [Features](docs/FEATURES.md) — everything the framework ships, by category, with a per-target matrix
 - [Architecture](docs/ARCHITECTURE.md) — bridge, database, sync, auth, theming
 - [Creating a device app](docs/CREATING-A-DEVICE-APP.md) — step-by-step extension guide
 - [Deployment](docs/deployment.md) — GitHub Actions → rsync web/PWA deploy
@@ -111,4 +112,7 @@ Change it immediately on a real device.
 - [ESS manager contract](docs/ESS-MANAGER-CONTRACT.md) — manager/approvals backend interface (weha-ai-hrd, consolidates Phase 3/4 records)
 - [ESS API reference](docs/ESS-API-REFERENCE.md) — EVERY endpoint required from weha-ai-hrd with request/response formats (backend build guide)
 - [ESS dummy data](docs/ESS-DUMMY-DATA.md) — preview every screen offline with JSON fixtures (`NEXT_PUBLIC_ESS_DUMMY=1`)
+- [AI Realtime](docs/AI-REALTIME.md) — Socket.IO gateway presence/heartbeat integration
+- [Push notifications](docs/FCM.md) — FCM on web/PWA + Capacitor, token registration
+- [Device capture](docs/DEVICE-CAPTURE.md) — QR/camera scanning + GPS
 - [AGENTS.md](AGENTS.md) — conventions for AI agents working in this repo
