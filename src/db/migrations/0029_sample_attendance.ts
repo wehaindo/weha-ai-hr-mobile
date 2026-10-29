@@ -12,8 +12,10 @@ import type { Migration } from '../migrate';
 export const migration0029SampleAttendance: Migration = {
   id: '0029_sample_attendance',
   up: (db) => {
+    // IF NOT EXISTS: devices that booted during the upstream merge applied the
+    // original 0026-sample of this migration, so the table may already exist.
     db.execute(`
-      CREATE TABLE sample_attendance (
+      CREATE TABLE IF NOT EXISTS sample_attendance (
         id TEXT PRIMARY KEY,
         user_id TEXT NOT NULL,
         user_name TEXT,
@@ -25,8 +27,10 @@ export const migration0029SampleAttendance: Migration = {
       )
     `);
     db.execute(
-      `CREATE INDEX idx_sample_attendance_user_recorded ON sample_attendance(user_id, recorded_at)`
+      `CREATE INDEX IF NOT EXISTS idx_sample_attendance_user_recorded ON sample_attendance(user_id, recorded_at)`
     );
-    db.execute(`CREATE INDEX idx_sample_attendance_recorded ON sample_attendance(recorded_at)`);
+    db.execute(
+      `CREATE INDEX IF NOT EXISTS idx_sample_attendance_recorded ON sample_attendance(recorded_at)`
+    );
   },
 };
