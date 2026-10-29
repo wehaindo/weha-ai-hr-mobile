@@ -94,7 +94,11 @@ Change it immediately on a real device.
 
 ## Docs
 
+- [Features](docs/FEATURES.md) — everything the framework ships, by category, with a per-target matrix
 - [Architecture](docs/ARCHITECTURE.md) — bridge, database, sync, auth, theming
 - [Creating a device app](docs/CREATING-A-DEVICE-APP.md) — step-by-step extension guide
 - [Mobile auth](docs/MOBILE-AUTH.md) — WEHA-account login (password/OTP), setup links, env config
+- [AI Realtime](docs/AI-REALTIME.md) — Socket.IO gateway presence/heartbeat integration
+- [Push notifications](docs/FCM.md) — FCM on web/PWA + Capacitor, token registration
+- [Device capture](docs/DEVICE-CAPTURE.md) — QR/camera scanning + GPS
 - [AGENTS.md](AGENTS.md) — conventions for AI agents working in this repo
