@@ -42,16 +42,31 @@ test.describe('bottom navigator (mobile viewport)', () => {
     await expect(page.getByTestId('dashboard')).toBeVisible();
   });
 
-  test('profile tab opens the sheet with theme toggle and sign out', async ({ page }) => {
+  test('profile tab opens the sheet with theme toggle, push enable and sign out', async ({ page }) => {
     await startOnMobile(page);
 
     await page.getByTestId('profile-tab').click();
     await expect(page.getByTestId('profile-sheet')).toBeVisible();
     await expect(page.getByTestId('profile-name')).toBeVisible();
     await expect(page.getByTestId('theme-toggle')).toBeVisible();
+    // FCM enable is reachable from the Profile sheet (no Settings needed)
+    await expect(page.getByTestId('profile-push')).toBeVisible();
+    await expect(page.getByTestId('profile-push-toggle')).toBeVisible();
     await expect(page.getByTestId('profile-logout')).toBeVisible();
 
     await page.getByTestId('profile-logout').click();
     await expect(page.getByTestId('user-grid')).toBeVisible({ timeout: 30000 });
+  });
+
+  test('notification bell opens the inbox with an empty state', async ({ page }) => {
+    await startOnMobile(page);
+
+    await expect(page.getByTestId('notifications-button')).toBeVisible();
+    await page.getByTestId('notifications-button').click();
+
+    await expect(page.getByTestId('notifications-sheet')).toBeVisible();
+    await expect(page.getByTestId('notifications-empty')).toBeVisible();
+    // nothing to mark read in the empty state → the button is not rendered
+    await expect(page.getByTestId('notifications-mark-read')).toHaveCount(0);
   });
 });

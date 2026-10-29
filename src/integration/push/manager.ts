@@ -6,6 +6,7 @@
 
 import type { DeviceBridge, PushMessage, PushPermission } from '@/platform';
 import { registerFcmToken } from './register';
+import { useNotifications } from '@/stores/notifications';
 
 export interface PushStatus {
   enabled: boolean;
@@ -55,9 +56,10 @@ export async function startPush(bridge: DeviceBridge): Promise<PushStatus> {
     lastRegister = await registerFcmToken(bridge, token);
   }
 
-  // Wire foreground messages → local notification (idempotent).
+  // Wire foreground messages → in-app inbox + local notification (idempotent).
   if (!unsubscribeMessages) {
     unsubscribeMessages = bridge.push.onMessage((message) => {
+      useNotifications.getState().add(message);
       void bridge.notify(message.title ?? 'Notification', message.body ?? '');
     });
   }

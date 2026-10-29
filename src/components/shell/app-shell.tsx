@@ -11,6 +11,7 @@ import DesktopHeader from './desktop-header';
 import TouchKeyboard from './touch-keyboard-gate';
 import BottomNav from './bottom-nav';
 import ProfileSheet from './profile-sheet';
+import NotificationsButton from './notifications-button';
 import { useBottomNav } from '@/hooks/use-bottom-nav';
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
@@ -83,15 +84,19 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const navItem = findNavItem(pathname);
 
   // Bottom navigator layout (web/PWA narrow + Capacitor mobile): no sidebar,
-  // no header — controls live in the Profile tab's bottom sheet.
+  // no header — controls live in the Profile tab's bottom sheet, with the
+  // notification bell on the title row.
   if (bottomNav) {
     return (
       <div className="flex h-dvh flex-col overflow-hidden">
         <div className="flex-1 overflow-auto bg-muted/30" data-testid="main-content">
-          <div className="px-4 pt-4">
+          <div className="flex items-center justify-between gap-2 px-4 pt-4">
             <h1 className="truncate text-lg font-semibold" data-testid="page-title">
               {navItem?.label ?? ''}
             </h1>
+            <div className="shrink-0">
+              <NotificationsButton />
+            </div>
           </div>
           <div className="p-4">{children}</div>
         </div>
