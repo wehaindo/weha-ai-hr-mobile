@@ -23,6 +23,7 @@ describe('nav.config build-target gating', () => {
       '/dashboard',
       '/transactions',
       '/scan-locate',
+      '/attendance',
       '/sync',
       '/settings',
     ]);

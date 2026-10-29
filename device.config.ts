@@ -30,6 +30,7 @@ const fullModules = {
   aiVoice: true,
   testing: true,
   push: true,
+  three: true,
 };
 
 // TS enforces the minimal profile covers every module key.
@@ -57,6 +58,7 @@ const minimalModules: ModuleFlags = {
   aiVoice: false,
   testing: false,
   push: true,
+  three: true,
 };
 
 const deviceConfig = {

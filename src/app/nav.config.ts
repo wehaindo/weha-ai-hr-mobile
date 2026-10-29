@@ -7,6 +7,7 @@ import {
   RefreshCw,
   ScanLine,
   Settings,
+  UserCheck,
   type LucideIcon,
 } from 'lucide-react';
 import deviceConfig, { type ModuleKey } from '@/device.config';
@@ -29,6 +30,7 @@ export const NAV_ITEMS: NavItem[] = [
   { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { label: 'Transactions', href: '/transactions', icon: Receipt, permission: 'transactions.use' },
   { label: 'Scan', href: '/scan-locate', icon: ScanLine, permission: 'transactions.use' },
+  { label: 'Attendance', href: '/attendance', icon: UserCheck, module: 'three' },
   { label: 'Sync', href: '/sync', icon: RefreshCw, permission: 'sync.manage', module: 'sync' },
   { label: 'Settings', href: '/settings', icon: Settings, permission: 'settings.manage' },
 ];

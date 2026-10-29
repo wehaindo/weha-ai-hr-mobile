@@ -24,6 +24,7 @@ import { migration0022TransactionsPermission } from './0022_transactions_permiss
 import { migration0023DatahubEnrollment } from './0023_datahub_enrollment';
 import { migration0024MobileAuth } from './0024_mobile_auth';
 import { migration0025SeedDemoUser } from './0025_seed_demo_user';
+import { migration0026SampleAttendance } from './0026_sample_attendance';
 
 // Framework migrations — run on every platform before the app boots.
 // App-specific migrations: append here (create one file per migration).
@@ -53,4 +54,5 @@ export const frameworkMigrations: Migration[] = [
   migration0023DatahubEnrollment,
   migration0024MobileAuth,
   migration0025SeedDemoUser,
+  migration0026SampleAttendance,
 ];
