@@ -42,7 +42,9 @@ export const attendanceConfigSchema = z.object({
   policy: z.object({
     duplicateIntervalSeconds: z.coerce.number(),
     offlineAllowed: z.boolean(),
-    geofencePolicy: z.enum(['REJECT', 'EXCEPTION']),
+    // ALLOW: passed through by weha-ai-hrd (raw env value) — same behaviour
+    // as EXCEPTION on the server; tolerated so the config never fails to parse.
+    geofencePolicy: z.enum(['REJECT', 'EXCEPTION', 'ALLOW']),
     maxAccuracyMeters: z.coerce.number(),
     lateSyncHours: z.coerce.number().optional(),
   }),

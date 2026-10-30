@@ -86,6 +86,24 @@ describe('EssAttendanceApi', () => {
     expect(call.headers.Authorization).toBe('Bearer test-access-token');
   });
 
+  it('parses the backend raw geofence policy ALLOW (treated like EXCEPTION)', async () => {
+    const { api } = await makeApi(() =>
+      ok({
+        methods: ['GPS'],
+        policy: {
+          duplicateIntervalSeconds: 120,
+          offlineAllowed: true,
+          geofencePolicy: 'ALLOW',
+          maxAccuracyMeters: 100,
+        },
+      })
+    );
+
+    const config = await api.getConfig();
+
+    expect(config.policy.geofencePolicy).toBe('ALLOW');
+  });
+
   it('submitEvent sends Idempotency-Key equal to the body key and never an employee id/status/type', async () => {
     const { api, request } = await makeApi(() => ok({ event: EVENT_RESULT }));
 

@@ -60,6 +60,14 @@ describe('evaluateLocation (BRD FR-03 policy table)', () => {
     expect(result.reason).toBe('outside_geofence');
   });
 
+  it('treats the backend raw policy ALLOW like EXCEPTION (submit for review)', () => {
+    const fix = { ...northOf(500), accuracyMeters: 10, capturedAt: '2026-10-22T08:01:00.000Z' };
+    const result = evaluateLocation(fix, WORKSITE, { geofencePolicy: 'ALLOW' });
+
+    expect(result.verdict).toBe('exception');
+    expect(result.reason).toBe('outside_geofence');
+  });
+
   it('asks for a retry when reported accuracy is too poor — even inside the radius', () => {
     const fix = { ...northOf(5), accuracyMeters: 250, capturedAt: '2026-10-22T08:01:00.000Z' };
     const result = evaluateLocation(fix, WORKSITE, POLICY);

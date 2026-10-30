@@ -60,7 +60,7 @@ export function haversineMeters(a: GeoPoint, b: GeoPoint): number {
 export function evaluateLocation(
   fix: LocationFixLike,
   worksite: WorksiteGeo,
-  policy: { geofencePolicy: 'REJECT' | 'EXCEPTION' }
+  policy: { geofencePolicy: 'REJECT' | 'EXCEPTION' | 'ALLOW' }
 ): GeofenceEvaluation {
   const distanceMeters = haversineMeters(fix, worksite);
   const withinRadius = distanceMeters <= worksite.radiusMeters;
@@ -72,9 +72,11 @@ export function evaluateLocation(
     return { ...base, verdict: 'retry_accuracy', reason: 'accuracy_too_low' };
   }
   if (!withinRadius) {
+    // REJECT blocks on the device; anything else (EXCEPTION/ALLOW) submits
+    // for the server's authoritative review — mirroring weha-ai-hrd.
     return {
       ...base,
-      verdict: policy.geofencePolicy === 'EXCEPTION' ? 'exception' : 'reject',
+      verdict: policy.geofencePolicy === 'REJECT' ? 'reject' : 'exception',
       reason: 'outside_geofence',
     };
   }

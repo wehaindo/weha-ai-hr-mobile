@@ -20,6 +20,12 @@ export const REJECTION_LABELS: Record<string, string> = {
   stale_capture: 'Capture too old to sync',
   corrupt_payload: 'Stored event was damaged',
   rejected: 'Rejected by the server',
+  // Server-side reasons (weha-ai-hrd §5) — shown on server rejections.
+  no_worksite: 'No worksite assigned — contact HR',
+  poor_accuracy: 'GPS accuracy too low for this worksite',
+  duplicate_interval: 'Duplicate of a recent punch',
+  late_sync: 'Offline punch too old to sync',
+  qr_not_enabled: 'QR check-in is disabled for this worksite',
 };
 
 function formatTime(iso: string | null | undefined): string {
