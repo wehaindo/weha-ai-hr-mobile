@@ -55,7 +55,8 @@ export type AttendanceConfirmation =
   | { kind: 'pending'; eventId: string; capturedAt: string };
 
 export interface AttendanceCaptureError {
-  code: 'permission' | 'timeout' | 'unavailable' | 'accuracy' | 'no_worksite' | 'invalid_qr' | 'unsupported';
+  /** No local geofence gate: server rejections arrive as verdicts, not capture errors. */
+  code: 'permission' | 'timeout' | 'unavailable' | 'invalid_qr' | 'unsupported';
   message: string;
 }
 
@@ -336,8 +337,9 @@ export function useAttendance(): UseAttendance {
         | {
             method: 'GPS';
             fix: { latitude: number; longitude: number; accuracyMeters: number; capturedAt: string };
-            worksite: AttendanceWorksite;
-            evaluation: GeofenceEvaluation;
+            /** Informational: known worksite feeds the payload + live card; the server resolves the primary store when absent. */
+            worksite?: AttendanceWorksite;
+            evaluation?: GeofenceEvaluation;
           }
         | { method: 'QR'; payload: string }
     ): Promise<void> => {
@@ -347,34 +349,8 @@ export function useAttendance(): UseAttendance {
         args.method === 'GPS' ? args.fix.capturedAt : new Date().toISOString()
       );
 
-      // Client-side policy rejection: record locally, never submit (FR-07).
-      if (args.method === 'GPS' && args.evaluation.verdict === 'reject') {
-        await enqueueAttendanceEvent(bridge, {
-          id: identity.eventId,
-          employeeId: session?.id ?? 'unknown',
-          method: 'GPS',
-          payload: JSON.stringify(buildGpsSubmission(identity, args)),
-          idempotencyKey: identity.idempotencyKey,
-          capturedAt: identity.capturedAt,
-          status: 'rejected',
-          rejectionReason: args.evaluation.reason,
-        });
-        const worksite = state.data.worksites.find((w) => w.id === args.evaluation.worksiteId);
-        setConfirmation({
-          kind: 'rejected',
-          reason: args.evaluation.reason,
-          server: false,
-          geofence: {
-            distanceMeters: args.evaluation.distanceMeters,
-            accuracyMeters: args.fix.accuracyMeters,
-            radiusMeters: worksite?.radiusMeters,
-            worksiteName: worksite?.name,
-          },
-        });
-        await refresh();
-        return;
-      }
-
+      // Server-authoritative (product decision): never gate locally — every
+      // capture is enqueued and drained; the server verdict decides.
       const submission =
         args.method === 'GPS'
           ? buildGpsSubmission(identity, args)
@@ -432,12 +408,6 @@ export function useAttendance(): UseAttendance {
         return;
       }
 
-      const worksite = data.worksites.find((w) => w.isPrimary) ?? data.worksites.find((w) => w.isActive !== false);
-      if (!worksite) {
-        setCaptureError({ code: 'no_worksite', message: 'No worksite is assigned to you. Contact HR.' });
-        return;
-      }
-
       let fix;
       try {
         fix = await bridge.location.getCurrent();
@@ -453,17 +423,17 @@ export function useAttendance(): UseAttendance {
         return;
       }
 
-      const evaluation = evaluateLocation(fix, worksite, {
-        geofencePolicy: data.config.policy.geofencePolicy,
-      });
-      setCapture({ method: 'GPS', phase: 'locating', evaluation });
-
-      if (evaluation.verdict === 'retry_accuracy') {
-        setCaptureError({
-          code: 'accuracy',
-          message: `GPS accuracy too low (±${Math.round(fix.accuracyMeters)}m, max ${worksite.maxAccuracyMeters}m). Move to open sky and retry.`,
+      // No local worksite/geofence gate: evaluate only for the informational
+      // live card (distance/accuracy) — the server is the single authority
+      // (it resolves the primary store and applies policy/accuracy/radius).
+      const worksite =
+        data.worksites.find((w) => w.isPrimary) ?? data.worksites.find((w) => w.isActive !== false);
+      let evaluation: GeofenceEvaluation | undefined;
+      if (worksite) {
+        evaluation = evaluateLocation(fix, worksite, {
+          geofencePolicy: data.config.policy.geofencePolicy,
         });
-        return;
+        setCapture({ method: 'GPS', phase: 'locating', evaluation });
       }
 
       await submitCapture('GPS', { method: 'GPS', fix, worksite, evaluation });

@@ -75,26 +75,47 @@ test.describe('ESS attendance', () => {
     }
   });
 
-  test('rejects an out-of-geofence punch locally without any submission', async ({ page }) => {
+  test('submits an out-of-geofence punch and shows the server rejection', async ({ page }) => {
     await page.context().grantPermissions(['geolocation']);
     await page.context().setGeolocation(FAR_AWAY);
     await loginMobile(page);
-    const calls = await mockAttendanceApi(page);
+    const calls = await mockAttendanceApi(page, {
+      punch: (body) => ({
+        status: 200,
+        json: {
+          success: true,
+          data: {
+            event: {
+              id: body.eventId,
+              attendanceType: null,
+              method: 'GPS',
+              status: 'REJECTED',
+              recordedAt: null,
+              receivedAt: '2026-10-22T08:00:01.000Z',
+              worksite: { id: 'ws-1', name: ATTENDANCE_WORKSITE.name },
+              distanceMeters: 34120,
+              rejectionReason: 'outside_geofence',
+              duplicateOfEventId: null,
+            },
+          },
+        },
+      }),
+    });
 
     await page.goto('/dashboard');
     await page.getByTestId('punch-action').click();
 
+    // Server-authoritative: no local gate — the punch goes out and the
+    // server's verdict is rendered with its diagnostics.
     await expect(page.getByTestId('punch-confirmation')).toHaveAttribute('data-kind', 'rejected');
+    await expect(page.getByTestId('confirmation-submitted')).toHaveText('Yes — server rejected it');
     await expect(page.getByTestId('confirmation-reason')).toHaveText('Outside the authorized worksite area');
-    await expect(page.getByTestId('confirmation-submitted')).toHaveText('No — blocked on this device');
-    // geofence diagnostics: how far from the worksite vs the allowed radius
-    await expect(page.getByTestId('confirmation-distance')).toContainText('allowed 100 m');
     await expect(page.getByTestId('confirmation-distance')).toContainText(' m from ');
-    await expect(page.getByTestId('confirmation-accuracy')).toContainText('m');
 
-    expect(calls.punchPosts).toHaveLength(0); // never submitted (BRD FR-03 REJECT policy)
-    // the local rejection is preserved for the day view (FR-06 audit trail)
-    await expect(page.getByTestId('today-item').first()).toHaveAttribute('data-source', 'local');
+    expect(calls.punchPosts).toHaveLength(1);
+    for (const forbidden of ['employeeId', 'status', 'attendanceType']) {
+      expect(Object.keys(calls.punchPosts[0].body)).not.toContain(forbidden);
+    }
   });
 
   test('shows "Already recorded" when the server detects a duplicate', async ({ page }) => {

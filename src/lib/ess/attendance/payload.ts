@@ -22,20 +22,26 @@ export function buildGpsSubmission(
   identity: EventIdentity,
   args: {
     fix: { latitude: number; longitude: number; accuracyMeters: number };
-    worksite: { id: string };
-    evaluation: GeofenceEvaluation;
+    /** Absent → the server resolves the primary store (its doc §4). */
+    worksite?: { id: string };
+    /** Client-side distance/accuracy — informational for the server (contract §3.4). */
+    evaluation?: GeofenceEvaluation;
   }
 ): AttendanceSubmission {
   return {
     ...identity,
     method: 'GPS',
     location: {
-      worksiteId: args.worksite.id,
+      ...(args.worksite ? { worksiteId: args.worksite.id } : {}),
       latitude: args.fix.latitude,
       longitude: args.fix.longitude,
       accuracyMeters: fixAccuracy(args.fix.accuracyMeters),
-      distanceMeters: round1(args.evaluation.distanceMeters),
-      withinGeofence: args.evaluation.withinRadius,
+      ...(args.evaluation
+        ? {
+            distanceMeters: round1(args.evaluation.distanceMeters),
+            withinGeofence: args.evaluation.withinRadius,
+          }
+        : {}),
     },
   };
 }

@@ -155,6 +155,9 @@ For every submitted event, in order:
    REJECTED (`outside_geofence`) when policy = REJECT; when EXCEPTION,
    accept into an exception queue state ACCEPTED + `rejectionReason` note
    `outside_geofence_exception` (backend decides the approval workflow).
+   **The client never gates a punch** (product decision 2026-10): it always
+   submits the raw fix (omitting `worksiteId` when unknown) and renders this
+   server's verdict — accuracy/radius/policy enforcement lives only here.
 7. QR evidence: verify `qrPayload` against the signed worksite code
    (§4.3) — unknown/expired → REJECTED (`invalid_qr` / `expired_qr`).
 8. Server time wins: `receivedAt` from the server clock; client clocks are

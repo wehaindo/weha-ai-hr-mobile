@@ -84,7 +84,8 @@ export interface AttendanceSubmission {
   method: AttendanceMethod;
   capturedAt: string;
   location?: {
-    worksiteId: string;
+    /** Absent → the server resolves the employee's primary store. */
+    worksiteId?: string;
     latitude: number;
     longitude: number;
     accuracyMeters: number;

@@ -14,7 +14,9 @@ contract, following the Phase 2 pattern: mocked-API tests are evidence of
 client behavior only — **server-side acceptance items remain pending the
 backend build** (BRD §11: mocks are never production proof).
 
-Delivered methods: **GPS** (geofence + accuracy validation) and **QR**
+Delivered methods: **GPS** (server-authoritative geofence/accuracy — the
+client always submits and renders the server verdict; its own evaluation is a
+live display only) and **QR**
 (worksite credential scan with a bundled decoder). **Fingerprint and RFID
 are deferred** (confirmed scope decision): the framework exposes only raw
 Electron serial write/ETX-exchange and no attendance hardware is verified —
@@ -28,7 +30,7 @@ future terminal adapter slots in without rework.
 |---|---|---|
 | Attendance API contract (backend deliverable) | `docs/ESS-ATTENDANCE-CONTRACT.md` | Proposed Prisma (`AttendanceWorksite`/`AttendancePolicy`/`AttendanceEvent` w/ `@@unique([tenantId, idempotencyKey])`), 7 endpoints under `/api/mobile/v1/attendance/*`, server-authoritative `attendanceType`, DUPLICATE replay semantics, `WEHAATT:` signed QR payloads, release-blocking security matrix |
 | `location` bridge capability (framework-generic) | `src/platform/bridge.ts`, `src/platform/renderer-location.ts`, `src/platform/renderer-bridge.ts`, `electron/preload.ts` | `permission()/requestPermission()/getCurrent()`; error codes `permission_denied`/`timeout`/`unavailable`/`unsupported`; browser geolocation (identical on all renderer platforms; preload mirrors inline — no IPC needed) |
-| Offline attendance queue | `src/db/migrations/0026_attendance_queue.ts`, `src/lib/ess/attendance/queue.ts`, `src/lib/offline/backoff.ts` | `attendance_queue` (immutable `payload` evidence, `idempotency_key` UNIQUE, status queued/submitting/accepted/rejected/failed, attempt cap 8); local rejections preserved, never submitted; shared exponential backoff; retention registered at 180 days |
+| Offline attendance queue | `src/db/migrations/0026_attendance_queue.ts`, `src/lib/ess/attendance/queue.ts`, `src/lib/offline/backoff.ts` | `attendance_queue` (immutable `payload` evidence, `idempotency_key` UNIQUE, status queued/submitting/accepted/rejected/failed, attempt cap 8); every GPS capture is submitted — rejections come back from the server (historic local-rejection rows still render); shared exponential backoff; retention registered at 180 days |
 | Attendance API client | `src/integration/ess/core.ts`, `src/integration/ess/attendance.ts` | ESS request pipeline extracted to `core.ts` (auth, envelope, one forced refresh-retry, `Idempotency-Key` header, `rate_limited`/`not_found` codes) shared by profile + attendance; `EssAttendanceApi` with zod `.strip()` + Decimal coercion; never sends an employee id/`status`/`attendanceType` |
 | Domain logic | `src/lib/ess/attendance/{geofence,payload,qr}.ts` | Haversine + policy verdicts (`allow`/`reject`/`exception`/`retry_accuracy` — accuracy checked first); allowlisted submission builder (key == event id, 16-hex); `WEHAATT:` payload guard |
 | QR capture | `src/lib/ess/attendance/qr-session.ts` (+ `jsqr` dep) | getUserMedia rear camera → native `BarcodeDetector` when available, jsQR fallback (iOS/Safari); `stop()` releases all tracks (FR-04) |
@@ -44,7 +46,8 @@ assertion) and **8 e2e** (`tests/e2e/ess-attendance.spec.ts` with deterministic
 `context.setGeolocation()` and a CORS-aware mock in
 `tests/e2e/helpers/attendance-mock.ts`): renders, local-account no-session with
 zero API calls, GPS happy path (payload allowlist + idempotency == event id),
-out-of-geofence → local rejection with **zero submissions**, DUPLICATE →
+out-of-geofence → submitted, server verdict rendered (no local gate),
+DUPLICATE →
 "Already recorded", offline → pending → drained on reconnect, session expiry →
 reauth, camera-unavailable guidance.
 
@@ -100,7 +103,7 @@ Mocks are explicitly not production proof (BRD §11).
 | Item | Status | Evidence |
 |---|---|---|
 | Check in/out with each configured supported method | ✅/⏳ | GPS: e2e punch happy path + payload assertions; QR: `qr-session` unit tests (decode, cleanup), camera-failure path e2e; backend `POST /attendance/events` pending |
-| GPS validates worksite boundaries and accuracy | ✅/⏳ | `geofence.test.ts` (boundary/threshold/policy verdicts), e2e out-of-geofence with zero submissions; server-side recompute pending (contract §2.6) |
+| GPS validates worksite boundaries and accuracy | ✅/⏳ | `geofence.test.ts` (boundary/threshold/policy verdicts — informational display), e2e out-of-geofence submits and renders the server rejection; server-side recompute pending (contract §2.6) |
 | Unsupported capabilities identified without crashing | ✅ | Runtime capability matrix (`ess-device.ts`), diagnostics page, e2e local-account + camera-unavailable cases |
 | Permission denial handled | ✅ | Location denied → guidance + alternate method (hook + unit); camera denied → `permission_denied` guidance (`qr-session.test.ts`) |
 | Device disconnection handled | ✅ (n/a client) | Phase 3 has no external readers; QR/camera failures surface as retryable states (e2e) |

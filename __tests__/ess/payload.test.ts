@@ -79,6 +79,21 @@ describe('buildGpsSubmission', () => {
 
     expect(submission.location?.withinGeofence).toBe(false);
   });
+
+  it('omits worksite/distance when unknown — the server resolves the primary store', () => {
+    const submission = buildGpsSubmission(IDENTITY, {
+      fix: { latitude: -6.20881, longitude: 106.84562, accuracyMeters: 30 },
+    });
+
+    expect(submission.location).toEqual({
+      latitude: -6.20881,
+      longitude: 106.84562,
+      accuracyMeters: 30,
+    });
+    expect(Object.keys(submission.location ?? {})).not.toContain('worksiteId');
+    expect(Object.keys(submission.location ?? {})).not.toContain('distanceMeters');
+    expect(submission.method).toBe('GPS');
+  });
 });
 
 describe('buildQrSubmission', () => {
