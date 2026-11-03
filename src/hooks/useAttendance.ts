@@ -17,11 +17,9 @@ import {
   type AttendanceConfig,
   type AttendanceEventResult,
   type AttendanceStatus,
-  type AttendanceWorksite,
   type EssAttendanceApi,
 } from '@/integration/ess/attendance';
 import { createEssDeviceAdapter, type EssCapability } from '@/lib/platform/ess-device';
-import { evaluateLocation, type GeofenceEvaluation } from '@/lib/ess/attendance/geofence';
 import { buildGpsSubmission, buildQrSubmission, newAttendanceEvent } from '@/lib/ess/attendance/payload';
 import { parseQrPayload } from '@/lib/ess/attendance/qr';
 import { createQrSession, QrSessionError, type QrSession } from '@/lib/ess/attendance/qr-session';
@@ -75,7 +73,6 @@ export interface AttendanceReadiness {
 
 export interface AttendanceViewData {
   config: AttendanceConfig;
-  worksites: AttendanceWorksite[];
   status: AttendanceStatus;
   capabilities: EssCapability[];
   pending: AttendanceQueueRow[];
@@ -93,8 +90,6 @@ export type AttendanceState =
 export interface AttendanceCapture {
   method: AttendanceMethodChoice;
   phase: 'locating' | 'scanning';
-  /** GPS only: last evaluation shown while punching (distance/accuracy). */
-  evaluation?: GeofenceEvaluation;
 }
 
 export interface UseAttendance {
@@ -116,7 +111,6 @@ export interface UseAttendance {
 
 interface ServerLoad {
   config: AttendanceConfig;
-  worksites: AttendanceWorksite[];
   status: AttendanceStatus;
   capabilities: EssCapability[];
   gpsPermission: 'granted' | 'denied' | 'prompt' | 'unsupported';
@@ -168,14 +162,14 @@ export function useAttendance(): UseAttendance {
   const loadServer = useCallback(async (): Promise<ServerLoad> => {
     const api = await ensureApi();
     const adapter = createEssDeviceAdapter(bridge);
-    const [config, worksites, status, capabilities, gpsPermission] = await Promise.all([
+    // Worksites/geofence are server-side only: the client submits the raw fix.
+    const [config, status, capabilities, gpsPermission] = await Promise.all([
       api.getConfig(),
-      api.getWorksites(),
       api.getStatus(),
       adapter.getCapabilities(),
       bridge.location.permission(),
     ]);
-    return { config, worksites, status, capabilities, gpsPermission };
+    return { config, status, capabilities, gpsPermission };
   }, [bridge, ensureApi]);
 
   const loadLocal = useCallback(async (): Promise<LocalLoad> => {
@@ -192,7 +186,6 @@ export function useAttendance(): UseAttendance {
     const qrOk = server.capabilities.includes('qr-scan');
     return {
       config: server.config,
-      worksites: server.worksites,
       status: server.status,
       capabilities: server.capabilities,
       pending: local.pending,
@@ -337,9 +330,6 @@ export function useAttendance(): UseAttendance {
         | {
             method: 'GPS';
             fix: { latitude: number; longitude: number; accuracyMeters: number; capturedAt: string };
-            /** Informational: known worksite feeds the payload + live card; the server resolves the primary store when absent. */
-            worksite?: AttendanceWorksite;
-            evaluation?: GeofenceEvaluation;
           }
         | { method: 'QR'; payload: string }
     ): Promise<void> => {
@@ -423,20 +413,10 @@ export function useAttendance(): UseAttendance {
         return;
       }
 
-      // No local worksite/geofence gate: evaluate only for the informational
-      // live card (distance/accuracy) — the server is the single authority
-      // (it resolves the primary store and applies policy/accuracy/radius).
-      const worksite =
-        data.worksites.find((w) => w.isPrimary) ?? data.worksites.find((w) => w.isActive !== false);
-      let evaluation: GeofenceEvaluation | undefined;
-      if (worksite) {
-        evaluation = evaluateLocation(fix, worksite, {
-          geofencePolicy: data.config.policy.geofencePolicy,
-        });
-        setCapture({ method: 'GPS', phase: 'locating', evaluation });
-      }
-
-      await submitCapture('GPS', { method: 'GPS', fix, worksite, evaluation });
+      // No worksite/geofence handling on the device at all: the raw fix is
+      // submitted and the server resolves the worksite + verdict (product
+      // decision — attendance validation is server-side only).
+      await submitCapture('GPS', { method: 'GPS', fix });
     } catch (err) {
       if (err instanceof EssApiError && err.isSessionExpired) {
         handleSessionExpired();

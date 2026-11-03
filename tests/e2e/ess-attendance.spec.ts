@@ -69,7 +69,15 @@ test.describe('ESS attendance', () => {
     expect(post.body.idempotencyKey).toBe(post.body.eventId);
     expect(post.idempotencyKey).toBe(post.body.eventId);
     expect(post.authorization).toBe('Bearer access-e2e');
-    expect(post.body.location).toMatchObject({ worksiteId: 'ws-1', withinGeofence: true });
+    // Raw fix only: worksite resolution and the geofence verdict are server-side.
+    expect(post.body.location).toMatchObject({
+      latitude: expect.any(Number),
+      longitude: expect.any(Number),
+      accuracyMeters: expect.any(Number),
+    });
+    for (const key of ['worksiteId', 'distanceMeters', 'withinGeofence']) {
+      expect(Object.keys(post.body.location ?? {})).not.toContain(key);
+    }
     for (const forbidden of ['employeeId', 'status', 'attendanceType', 'receivedAt']) {
       expect(Object.keys(post.body)).not.toContain(forbidden);
     }

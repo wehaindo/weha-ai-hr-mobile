@@ -4,21 +4,11 @@ import {
   buildQrSubmission,
   newAttendanceEvent,
 } from '@/lib/ess/attendance/payload';
-import type { GeofenceEvaluation } from '@/lib/ess/attendance/geofence';
 
 const IDENTITY = {
   eventId: 'aaaaaaaaaaaaaaa1',
   idempotencyKey: 'aaaaaaaaaaaaaaa1',
   capturedAt: '2026-10-22T08:01:59.000Z',
-};
-
-const EVALUATION: GeofenceEvaluation = {
-  verdict: 'allow',
-  reason: 'inside_geofence',
-  distanceMeters: 34.4444,
-  withinRadius: true,
-  accuracyOk: true,
-  worksiteId: 'ws-1',
 };
 
 describe('newAttendanceEvent', () => {
@@ -41,8 +31,6 @@ describe('buildGpsSubmission', () => {
   it('emits only allowlisted keys — never employeeId, status or attendanceType', () => {
     const submission = buildGpsSubmission(IDENTITY, {
       fix: { latitude: -6.20881, longitude: 106.84562, accuracyMeters: 12.34 },
-      worksite: { id: 'ws-1' },
-      evaluation: EVALUATION,
     });
 
     expect(Object.keys(submission).sort()).toEqual(['capturedAt', 'eventId', 'idempotencyKey', 'location', 'method']);
@@ -51,48 +39,22 @@ describe('buildGpsSubmission', () => {
     expect(Object.keys(submission.location ?? {})).not.toContain('employeeId');
   });
 
-  it('carries the geofence evidence rounded for the wire', () => {
+  it('carries the raw fix only — worksite/geofence stay server-side', () => {
     const submission = buildGpsSubmission(IDENTITY, {
       fix: { latitude: -6.20881, longitude: 106.84562, accuracyMeters: 12.34 },
-      worksite: { id: 'ws-1' },
-      evaluation: EVALUATION,
     });
 
     expect(submission.method).toBe('GPS');
     expect(submission.location).toEqual({
-      worksiteId: 'ws-1',
       latitude: -6.20881,
       longitude: 106.84562,
       accuracyMeters: 12.3,
-      distanceMeters: 34.4,
-      withinGeofence: true,
     });
+    // The client never sends worksite ids, client distance or geofence verdicts.
+    for (const key of ['worksiteId', 'distanceMeters', 'withinGeofence']) {
+      expect(Object.keys(submission.location ?? {})).not.toContain(key);
+    }
     expect(submission.idempotencyKey).toBe(submission.eventId);
-  });
-
-  it('reports withinGeofence false for an exception-path submission', () => {
-    const submission = buildGpsSubmission(IDENTITY, {
-      fix: { latitude: -6.2, longitude: 106.84, accuracyMeters: 8 },
-      worksite: { id: 'ws-1' },
-      evaluation: { ...EVALUATION, verdict: 'exception', withinRadius: false, reason: 'outside_geofence' },
-    });
-
-    expect(submission.location?.withinGeofence).toBe(false);
-  });
-
-  it('omits worksite/distance when unknown — the server resolves the primary store', () => {
-    const submission = buildGpsSubmission(IDENTITY, {
-      fix: { latitude: -6.20881, longitude: 106.84562, accuracyMeters: 30 },
-    });
-
-    expect(submission.location).toEqual({
-      latitude: -6.20881,
-      longitude: 106.84562,
-      accuracyMeters: 30,
-    });
-    expect(Object.keys(submission.location ?? {})).not.toContain('worksiteId');
-    expect(Object.keys(submission.location ?? {})).not.toContain('distanceMeters');
-    expect(submission.method).toBe('GPS');
   });
 });
 

@@ -32,17 +32,17 @@ future terminal adapter slots in without rework.
 | `location` bridge capability (framework-generic) | `src/platform/bridge.ts`, `src/platform/renderer-location.ts`, `src/platform/renderer-bridge.ts`, `electron/preload.ts` | `permission()/requestPermission()/getCurrent()`; error codes `permission_denied`/`timeout`/`unavailable`/`unsupported`; browser geolocation (identical on all renderer platforms; preload mirrors inline — no IPC needed) |
 | Offline attendance queue | `src/db/migrations/0026_attendance_queue.ts`, `src/lib/ess/attendance/queue.ts`, `src/lib/offline/backoff.ts` | `attendance_queue` (immutable `payload` evidence, `idempotency_key` UNIQUE, status queued/submitting/accepted/rejected/failed, attempt cap 8); every GPS capture is submitted — rejections come back from the server (historic local-rejection rows still render); shared exponential backoff; retention registered at 180 days |
 | Attendance API client | `src/integration/ess/core.ts`, `src/integration/ess/attendance.ts` | ESS request pipeline extracted to `core.ts` (auth, envelope, one forced refresh-retry, `Idempotency-Key` header, `rate_limited`/`not_found` codes) shared by profile + attendance; `EssAttendanceApi` with zod `.strip()` + Decimal coercion; never sends an employee id/`status`/`attendanceType` |
-| Domain logic | `src/lib/ess/attendance/{geofence,payload,qr}.ts` | Haversine + policy verdicts (`allow`/`reject`/`exception`/`retry_accuracy` — accuracy checked first); allowlisted submission builder (key == event id, 16-hex); `WEHAATT:` payload guard |
+| Domain logic | `src/lib/ess/attendance/{payload,qr}.ts` | Allowlisted submission builder (raw GPS fix only — worksite resolution and the geofence verdict are server-side; key == event id, 16-hex); `WEHAATT:` payload guard |
 | QR capture | `src/lib/ess/attendance/qr-session.ts` (+ `jsqr` dep) | getUserMedia rear camera → native `BarcodeDetector` when available, jsQR fallback (iOS/Safari); `stop()` releases all tracks (FR-04) |
 | Sync drain | `src/lib/ess/attendance/sync.ts` | 1 due row → single POST; batch → `/events/sync`; classification: session expiry & network & 429 stop the drain without burning attempts, 4xx parks as failed, backoff gates retries |
-| Attendance controller | `src/hooks/useAttendance.ts` | Capability × policy matrix, GPS punch flow (locate → evaluate → enqueue → drain → confirmation), QR session management, drain triggers (mount, after punch, `online` with backoff reset, 30 s while pending), offline-tolerant refresh (local pending state updates even when the server fetch fails) |
-| UI | `src/app/attendance/page.tsx`, `src/components/ess/attendance/*` | Status card (current state + FR-05 readiness chips + sync-pending), punch card (method picker with reasons, GPS strip, errors), QR panel, FR-07 confirmation (Recorded/Pending/Rejected/Already recorded — server values only), today's punches (server + local merge), pending-events card with manual retry |
+| Attendance controller | `src/hooks/useAttendance.ts` | Capability × policy matrix, GPS punch flow (locate → enqueue → drain → server verdict; no client worksite/geofence handling), QR session management, drain triggers (mount, after punch, `online` with backoff reset, 30 s while pending), offline-tolerant refresh (local pending state updates even when the server fetch fails) |
+| UI | `src/app/dashboard/page.tsx`, `src/components/ess/dashboard/attendance-section.tsx`, `src/components/ess/attendance/*` | Attendance section on the dashboard (status card with FR-05 readiness chips + sync-pending, punch card with method picker/reasons/errors, QR panel, FR-07 confirmation Recorded/Pending/Rejected/Already recorded — server values only, today's punches server+local merge, pending-events card with manual retry) |
 | Capability detection | `src/lib/platform/ess-device.ts`, `src/app/diagnostics/page.tsx` | `location`/`camera`/`qr-scan` now detected at runtime; RFID/fingerprint honestly absent; diagnostics grid updates automatically |
 
-Tests: **73 new unit tests** (`renderer-location` 7, `attendance-queue` 11,
-`attendance-client` 11, `geofence` 8, `payload` 7, `qr` 6, `qr-session` 5,
-`attendance-sync` 12, ess-device detection +2, plus updated migrate table
-assertion) and **8 e2e** (`tests/e2e/ess-attendance.spec.ts` with deterministic
+Tests: **attendance unit suites** (`renderer-location`, `attendance-queue`,
+`attendance-client`, `payload`, `qr`, `qr-session`, `attendance-sync`,
+ess-device detection, migrate table assertion) and **8 e2e**
+(`tests/e2e/ess-attendance.spec.ts` with deterministic
 `context.setGeolocation()` and a CORS-aware mock in
 `tests/e2e/helpers/attendance-mock.ts`): renders, local-account no-session with
 zero API calls, GPS happy path (payload allowlist + idempotency == event id),
@@ -103,7 +103,7 @@ Mocks are explicitly not production proof (BRD §11).
 | Item | Status | Evidence |
 |---|---|---|
 | Check in/out with each configured supported method | ✅/⏳ | GPS: e2e punch happy path + payload assertions; QR: `qr-session` unit tests (decode, cleanup), camera-failure path e2e; backend `POST /attendance/events` pending |
-| GPS validates worksite boundaries and accuracy | ✅/⏳ | `geofence.test.ts` (boundary/threshold/policy verdicts — informational display), e2e out-of-geofence submits and renders the server rejection; server-side recompute pending (contract §2.6) |
+| GPS validates worksite boundaries and accuracy | ✅/⏳ | Server-authoritative: the client submits the raw fix and renders the server verdict (e2e out-of-geofence submits and shows the server rejection); client-side evaluation removed; server-side recompute pending (contract §2.6) |
 | Unsupported capabilities identified without crashing | ✅ | Runtime capability matrix (`ess-device.ts`), diagnostics page, e2e local-account + camera-unavailable cases |
 | Permission denial handled | ✅ | Location denied → guidance + alternate method (hook + unit); camera denied → `permission_denied` guidance (`qr-session.test.ts`) |
 | Device disconnection handled | ✅ (n/a client) | Phase 3 has no external readers; QR/camera failures surface as retryable states (e2e) |

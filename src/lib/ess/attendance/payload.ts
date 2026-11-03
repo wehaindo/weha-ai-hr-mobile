@@ -1,10 +1,11 @@
 // Submission builder (contract §3.4) — emits ONLY the allowlisted keys the
 // backend accepts. Never an employeeId, status or attendanceType: identity
 // comes from the token and outcomes are server-authoritative (BRD §6).
+// GPS submissions carry the raw fix only — worksite resolution, distance and
+// the geofence verdict are computed on the server (product decision).
 
 import { generateId } from '@/lib/id';
 import type { AttendanceSubmission } from '@/integration/ess/attendance';
-import type { GeofenceEvaluation } from './geofence';
 
 export interface EventIdentity {
   eventId: string;
@@ -20,28 +21,15 @@ export function newAttendanceEvent(capturedAt: string = new Date().toISOString()
 
 export function buildGpsSubmission(
   identity: EventIdentity,
-  args: {
-    fix: { latitude: number; longitude: number; accuracyMeters: number };
-    /** Absent → the server resolves the primary store (its doc §4). */
-    worksite?: { id: string };
-    /** Client-side distance/accuracy — informational for the server (contract §3.4). */
-    evaluation?: GeofenceEvaluation;
-  }
+  args: { fix: { latitude: number; longitude: number; accuracyMeters: number } }
 ): AttendanceSubmission {
   return {
     ...identity,
     method: 'GPS',
     location: {
-      ...(args.worksite ? { worksiteId: args.worksite.id } : {}),
       latitude: args.fix.latitude,
       longitude: args.fix.longitude,
       accuracyMeters: fixAccuracy(args.fix.accuracyMeters),
-      ...(args.evaluation
-        ? {
-            distanceMeters: round1(args.evaluation.distanceMeters),
-            withinGeofence: args.evaluation.withinRadius,
-          }
-        : {}),
     },
   };
 }
@@ -55,10 +43,6 @@ export function buildQrSubmission(
     method: 'QR',
     credential: { type: 'QR', payload: credential.payload },
   };
-}
-
-function round1(n: number): number {
-  return Math.round(n * 10) / 10;
 }
 
 function fixAccuracy(n: number): number {

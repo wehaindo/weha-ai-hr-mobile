@@ -34,7 +34,6 @@ export function PunchCard({
 }: PunchCardProps) {
   const actionLabel = expectedNext === 'CHECK_OUT' ? 'Check out' : 'Check in';
   const locating = capture?.method === 'GPS' && capture.phase === 'locating';
-  const evaluation = capture?.method === 'GPS' ? capture.evaluation : undefined;
   const methodReady = availability[choice].available;
 
   return (
@@ -94,15 +93,6 @@ export function PunchCard({
           <p className="text-sm text-muted-foreground" data-testid="gps-locating">
             Acquiring your location…
           </p>
-        )}
-        {evaluation && !captureError && (
-          <div className="rounded-md border p-3 text-xs text-muted-foreground" data-testid="gps-evaluation">
-            <p>
-              Worksite distance: <strong data-testid="gps-distance">{Math.round(evaluation.distanceMeters)} m</strong>
-              {' · '}
-              within {evaluation.withinRadius ? 'the' : 'outside the'} allowed radius
-            </p>
-          </div>
         )}
         {captureError && (
           <div
