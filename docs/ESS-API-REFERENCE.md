@@ -603,3 +603,22 @@ OTHER`; `periodId` (optional) must reference an own posted period →
    release-blocking) — then point the ESS client's
    `NEXT_PUBLIC_ERP_BASE_URL` at the deployment and re-run the client's
    Playwright suites to promote mocked items to production-verified.
+
+---
+
+## Talent — performance reviews (implemented in weha-ai-hrd)
+
+Self-only mobile routes, already live under `/api/mobile/v1/talent/*`
+(employee id always from the token):
+
+| Method | Path | Returns |
+|---|---|---|
+| GET | `/talent/performance` | `{ summary \| null, trend[] }` — PUBLISHED result + released history |
+| GET | `/talent/reviews` | `{ items: Review[] }` |
+| GET | `/talent/reviews/:id` | `{ review }` (403 when not yours) |
+| POST | `/talent/reviews/:id/self-assessment` | `{ responses[], comments? }` → `{ review }` (409 unless `SELF_ASSESSMENT`) |
+| POST | `/talent/reviews/:id/acknowledge` | `{ review }` (409 unless `FINALIZED`; publishing gate) |
+
+Full shapes, the review state machine and validation rules:
+[`ESS-PERFORMANCE-CONTRACT.md`](ESS-PERFORMANCE-CONTRACT.md). Client:
+`src/integration/ess/performance.ts`, screen `/performance`.

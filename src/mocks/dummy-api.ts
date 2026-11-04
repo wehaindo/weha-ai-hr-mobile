@@ -36,6 +36,11 @@ interface Fixture {
     documents: Json[];
     inquiries: Json[];
   };
+  performance: {
+    summary: Json | null;
+    trend: Json[];
+    reviews: Json[];
+  };
 }
 
 let fixturePromise: Promise<{ fixture: Fixture; state: Overlay }> | null = null;
@@ -50,6 +55,7 @@ interface Overlay {
   approvals: Json[];
   today: Json[];
   inquiries: Json[];
+  reviews: Json[];
   seq: number;
 }
 
@@ -62,6 +68,8 @@ async function load(): Promise<{ fixture: Fixture; state: Overlay }> {
         approvals: [...fixture.approvals.items],
         today: [...fixture.attendance.status.today],
         inquiries: [...fixture.payroll.inquiries],
+        // Deep clone: self-assessment/acknowledge mutate the review objects.
+        reviews: JSON.parse(JSON.stringify(fixture.performance.reviews)) as Json[],
         seq: 600,
       };
       return { fixture, state };
@@ -349,6 +357,48 @@ export async function matchDummyApi(req: CloudRequest): Promise<CloudResponse | 
       ? dashboard.team.filter((member) => String(member.name ?? '').toLowerCase().includes(search))
       : dashboard.team;
     return ok({ team, nextCursor: null });
+  }
+
+  // ── Talent / performance reviews ────────────────────────────────────────
+  if (path === '/talent/performance') {
+    return ok({ summary: fixture.performance.summary, trend: fixture.performance.trend });
+  }
+  if (path === '/talent/reviews' && method === 'GET') {
+    return ok({ items: state.reviews });
+  }
+  if (path.startsWith('/talent/reviews/')) {
+    const rest = path.slice('/talent/reviews/'.length);
+    const [id, action] = rest.split('/');
+    const review = state.reviews.find((item) => item.id === id);
+    if (!review) return fail(404, 'not_found', 'Performance review not found.');
+
+    if (action === 'self-assessment' && method === 'POST') {
+      const body = bodyJson(req);
+      const responses = Array.isArray(body.responses) ? (body.responses as Json[]) : [];
+      const template = (review.templateVersion as Json | undefined) ?? {};
+      const criteria = (template.criteria as Json[] | undefined) ?? [];
+      review.responses = responses.map((response) => {
+        const criterion = criteria.find((item) => item.key === response.criterionKey);
+        return {
+          assignmentId: 'asg-self',
+          criterionKey: response.criterionKey,
+          score: response.notApplicable === true ? null : (response.score ?? null),
+          maxScore: criterion?.maxScore ?? null,
+          notApplicable: response.notApplicable === true,
+          comment: response.comment ?? null,
+        };
+      });
+      review.state = 'MANAGER_REVIEW';
+      review.version = Number(review.version ?? 0) + 1;
+      return ok({ review });
+    }
+    if (action === 'acknowledge' && method === 'POST') {
+      review.state = 'ACKNOWLEDGED';
+      review.acknowledgedAt = new Date().toISOString();
+      review.version = Number(review.version ?? 0) + 1;
+      return ok({ review });
+    }
+    if (!action) return ok({ review });
   }
 
   // ── Payroll ─────────────────────────────────────────────────────────────

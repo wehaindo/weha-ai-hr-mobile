@@ -254,6 +254,21 @@ async function main() {
     record('GET /ess/payroll/inquiries/:id', (await call('GET', `/ess/payroll/inquiries/${firstInquiry.id}`)).status === 200, '');
   }
 
+  // ── Talent / performance (reads) ────────────────────────────────────────
+  const performance = await call('GET', '/talent/performance');
+  record(
+    'GET /talent/performance',
+    performance.status === 200,
+    `${performance.status} summary=${performance.json?.data?.summary ? 'published' : 'none'} trend=${performance.json?.data?.trend?.length ?? '?'}`
+  );
+  const talentReviews = await call('GET', '/talent/reviews');
+  const talentItems = talentReviews.json?.data?.items ?? [];
+  record('GET /talent/reviews', talentReviews.status === 200, `${talentReviews.status} items=${talentItems.length}`);
+  if (talentItems[0]?.id) {
+    const one = await call('GET', `/talent/reviews/${talentItems[0].id}`);
+    record('GET /talent/reviews/:id', one.status === 200, `${one.status} state=${one.json?.data?.review?.state ?? '?'}`);
+  }
+
   // ── NOTIFICATIONS (legacy route) ────────────────────────────────────────
   const notif = await call('GET', '/notifications');
   record('GET /notifications', notif.status === 200 || notif.status === 404, `${notif.status}`);

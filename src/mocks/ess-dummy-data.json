@@ -444,5 +444,138 @@
         ]
       }
     ]
+  },
+  "performance": {
+    "summary": {
+      "id": "sum-demo-1",
+      "revision": 2,
+      "publishedAt": "2026-07-15T03:00:00.000Z",
+      "reviewId": "rev-demo-published",
+      "reviewState": "ACKNOWLEDGED",
+      "cycle": { "name": "H1 2026 Review", "periodStart": "2026-01-01", "periodEnd": "2026-06-30" },
+      "overallScore": 82.4,
+      "rating": "A",
+      "ratingLabel": "Exceeds expectations",
+      "competencyResults": [],
+      "strengths": ["Reliable shift coverage", "Strong customer handling"],
+      "improvementAreas": ["Document handover notes earlier"],
+      "recommendations": [
+        {
+          "id": "rec-demo-1",
+          "title": "Advanced retail operations training",
+          "description": "Nominate for the Q4 cohort to strengthen inventory handling.",
+          "kind": "TRAINING",
+          "priority": "MEDIUM"
+        }
+      ],
+      "selfScore": 80,
+      "managerScore": 84,
+      "previousScore": 78.5,
+      "kpiAchievement": 90,
+      "employeeComments": "Great cycle overall.",
+      "managerComments": "Consistent performer — ready for more responsibility.",
+      "hrComments": null
+    },
+    "trend": [
+      {
+        "reviewId": "rev-demo-published",
+        "cycleName": "H1 2026 Review",
+        "periodEnd": "2026-06-30",
+        "score": 82.4,
+        "ratingLabel": "Exceeds expectations",
+        "delta": 3.9,
+        "comparable": true
+      },
+      {
+        "reviewId": "rev-demo-older",
+        "cycleName": "Annual 2025",
+        "periodEnd": "2025-12-31",
+        "score": 78.5,
+        "ratingLabel": "Meets expectations",
+        "delta": null,
+        "comparable": false,
+        "reason": "Scoring methodology changed — comparison not comparable"
+      }
+    ],
+    "reviews": [
+      {
+        "id": "rev-demo-self",
+        "state": "SELF_ASSESSMENT",
+        "cycle": { "code": "H2-2026", "name": "H2 2026 Review", "state": "OPEN", "periodStart": "2026-07-01", "periodEnd": "2026-12-31" },
+        "reviewer": { "displayName": "Sari Admin", "firstName": "Sari", "lastName": "Admin" },
+        "assignments": [
+          { "id": "asg-self", "stage": "SELF", "state": "PENDING", "dueAt": "2026-11-20T00:00:00.000Z" },
+          { "id": "asg-mgr", "stage": "MANAGER", "state": "PENDING", "dueAt": "2026-12-05T00:00:00.000Z" }
+        ],
+        "responses": [],
+        "templateVersion": {
+          "allowMissing": false,
+          "sections": [
+            { "key": "CRITERIA", "label": "Criteria", "weight": 100 }
+          ],
+          "criteria": [
+            {
+              "key": "attendance",
+              "label": "Attendance & punctuality",
+              "weight": 40,
+              "maxScore": 5,
+              "mandatory": true,
+              "isScored": true,
+              "scoreLabels": [
+                { "score": 1, "label": "Unsatisfactory" },
+                { "score": 2, "label": "Needs improvement" },
+                { "score": 3, "label": "Meets expectations" },
+                { "score": 4, "label": "Exceeds" },
+                { "score": 5, "label": "Outstanding" }
+              ]
+            },
+            {
+              "key": "customer",
+              "label": "Customer handling",
+              "weight": 40,
+              "maxScore": 5,
+              "mandatory": true,
+              "isScored": true
+            },
+            {
+              "key": "notes",
+              "label": "Examples this cycle",
+              "weight": 0,
+              "maxScore": 0,
+              "mandatory": false,
+              "isScored": false,
+              "requiresEvidence": true
+            }
+          ]
+        },
+        "finalizedAt": null,
+        "acknowledgedAt": null,
+        "version": 3
+      },
+      {
+        "id": "rev-demo-finalized",
+        "state": "FINALIZED",
+        "cycle": { "code": "H2-2026", "name": "H2 2026 Review", "state": "OPEN", "periodStart": "2026-07-01", "periodEnd": "2026-12-31" },
+        "reviewer": { "displayName": "Sari Admin", "firstName": "Sari", "lastName": "Admin" },
+        "assignments": [
+          { "id": "asg-self-2", "stage": "SELF", "state": "SUBMITTED", "dueAt": "2026-11-20T00:00:00.000Z" },
+          { "id": "asg-mgr-2", "stage": "MANAGER", "state": "SUBMITTED", "dueAt": "2026-12-05T00:00:00.000Z" }
+        ],
+        "responses": [
+          { "assignmentId": "asg-self-2", "criterionKey": "attendance", "score": 4, "maxScore": 5, "comment": "No unplanned absences this cycle." },
+          { "assignmentId": "asg-self-2", "criterionKey": "customer", "score": 4, "maxScore": 5, "comment": null }
+        ],
+        "templateVersion": {
+          "allowMissing": false,
+          "criteria": [
+            { "key": "attendance", "label": "Attendance & punctuality", "weight": 40, "maxScore": 5, "mandatory": true, "isScored": true },
+            { "key": "customer", "label": "Customer handling", "weight": 40, "maxScore": 5, "mandatory": true, "isScored": true }
+          ]
+        },
+        "finalizedAt": "2026-10-28T04:00:00.000Z",
+        "acknowledgedAt": null,
+        "version": 9
+      }
+    ]
   }
 }
