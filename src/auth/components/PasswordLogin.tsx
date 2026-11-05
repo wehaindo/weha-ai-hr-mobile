@@ -14,9 +14,11 @@ interface PasswordLoginProps {
   onCancel: () => void;
   error?: string;
   busy?: boolean;
+  /** Hide the Back button when the page is locked to this single method. */
+  showBack?: boolean;
 }
 
-export default function PasswordLogin({ onSubmit, onCancel, error, busy }: PasswordLoginProps) {
+export default function PasswordLogin({ onSubmit, onCancel, error, busy, showBack = true }: PasswordLoginProps) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
 
@@ -59,9 +61,11 @@ export default function PasswordLogin({ onSubmit, onCancel, error, busy }: Passw
       )}
 
       <div className="flex gap-2">
-        <Button type="button" variant="outline" className="flex-1" onClick={onCancel}>
-          Back
-        </Button>
+        {showBack && (
+          <Button type="button" variant="outline" className="flex-1" onClick={onCancel}>
+            Back
+          </Button>
+        )}
         <Button type="submit" className="flex-1" disabled={busy || !username.trim() || !password} data-testid="login-submit">
           {busy ? 'Signing in…' : 'Sign in'}
         </Button>

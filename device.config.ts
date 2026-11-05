@@ -8,6 +8,7 @@
 // web/pwa and cap-mobile (phone) get the minimal one.
 
 import { APP_TARGET, isFullTarget } from './src/lib/app-target';
+import { enabledLoginMethods } from './src/lib/login-method';
 
 // Full profile: Electron desktop and Capacitor tablets.
 const fullModules = {
@@ -69,6 +70,11 @@ const deviceConfig = {
 
   // Build target this bundle was produced for ('web' when the env was unset)
   target: APP_TARGET,
+
+  // Which sign-in types the login page offers (NEXT_PUBLIC_LOGIN_METHOD, a
+  // comma list or 'all'). The page lets the user switch between these on the
+  // login screen; see src/lib/login-method.ts.
+  loginMethods: enabledLoginMethods(),
 
   // Dev server port (must match the port in package.json scripts)
   port: 3180,

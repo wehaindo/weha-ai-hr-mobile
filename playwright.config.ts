@@ -32,6 +32,10 @@ export default defineConfig({
     url: 'http://localhost:3180',
     reuseExistingServer: !process.env.CI,
     timeout: 120000,
+    // Force all login methods for e2e regardless of the local .env value
+    // (shell env wins over .env in Next). Tests rely on the PIN grid + the
+    // "Sign in with WEHA account" switch link.
+    env: { NEXT_PUBLIC_LOGIN_METHOD: 'all' },
   },
   outputDir: 'tests/e2e/screenshots',
 });
