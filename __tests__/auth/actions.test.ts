@@ -2,8 +2,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createFakeBridge } from '../helpers/fake-bridge';
 import { authenticate, authenticateWithCredentials, fetchActiveUsers, fetchPermissions } from '@/auth/actions';
-import { hashPassword, verifyPin } from '@/auth/crypto';
-import { ALL_PERMISSIONS } from '@/auth/permissions';
+import { hashPassword, hashPin, verifyPin } from '@/auth/crypto';
+import { ALL_PERMISSIONS, mapRole } from '@/auth/permissions';
 
 describe('auth actions', () => {
   beforeEach(() => {
@@ -100,5 +100,95 @@ describe('auth actions', () => {
     );
     const session = await authenticateWithCredentials(bridge, 'bob', 'secret123');
     expect(session.display_name).toBe('Bob');
+  });
+});
+
+describe('synced identity login (employees / portal_users)', () => {
+  it('maps synced free-text roles to built-in roles', () => {
+    expect(mapRole('Administrator')).toBe('admin');
+    expect(mapRole('admin')).toBe('admin');
+    expect(mapRole('Manager')).toBe('manager');
+    expect(mapRole('Cashier')).toBe('operator'); // unmatched → least privilege
+    expect(mapRole(null)).toBe('operator');
+    expect(mapRole('')).toBe('operator');
+  });
+
+  it('lists synced employees that have a device PIN', async () => {
+    const { bridge } = await createFakeBridge();
+    const ts = new Date().toISOString();
+    await bridge.db.execute(
+      `INSERT INTO employees (id, name, role, is_active, device_pin_hash, created_at, updated_at)
+       VALUES ('emp-1', 'Budi', 'Cashier', 1, ?, ?, ?)`,
+      [await hashPin('1234'), ts, ts]
+    );
+
+    const users = await fetchActiveUsers(bridge);
+    const budi = users.find((u) => u.display_name === 'Budi');
+    expect(budi).toBeDefined();
+    expect(budi?.role).toBe('operator'); // Cashier → operator
+  });
+
+  it('authenticates a synced employee with their device PIN (offline)', async () => {
+    const { bridge } = await createFakeBridge();
+    const ts = new Date().toISOString();
+    await bridge.db.execute(
+      `INSERT INTO employees (id, name, role, is_active, device_pin_hash, created_at, updated_at)
+       VALUES ('emp-1', 'Admin Staff', 'Administrator', 1, ?, ?, ?)`,
+      [await hashPin('5678'), ts, ts]
+    );
+
+    const session = await authenticate(bridge, 'emp-1', '5678');
+    expect(session.display_name).toBe('Admin Staff');
+    expect(session.role).toBe('admin'); // Administrator → admin
+    expect(session.permissions).toEqual(expect.arrayContaining([...ALL_PERMISSIONS]));
+
+    await expect(authenticate(bridge, 'emp-1', '0000')).rejects.toThrow('Incorrect PIN');
+  });
+
+  it('authenticates a synced portal user with their password (offline)', async () => {
+    const { bridge } = await createFakeBridge();
+    const ts = new Date().toISOString();
+    await bridge.db.execute(
+      `INSERT INTO employees (id, name, role, is_active, created_at, updated_at)
+       VALUES ('emp-2', 'Manager Person', 'Manager', 1, ?, ?)`,
+      [ts, ts]
+    );
+    await bridge.db.execute(
+      `INSERT INTO portal_users (id, email, name, employee_id, is_active, password_hash, created_at, updated_at)
+       VALUES ('pu-1', 'budi@example.com', 'Budi', 'emp-2', 1, ?, ?, ?)`,
+      [await hashPassword('secret123'), ts, ts]
+    );
+
+    const session = await authenticateWithCredentials(bridge, 'budi@example.com', 'secret123');
+    expect(session.display_name).toBe('Budi');
+    expect(session.role).toBe('manager'); // linked employee Manager → manager
+
+    await expect(authenticateWithCredentials(bridge, 'budi@example.com', 'wrong')).rejects.toThrow('Incorrect password');
+    await expect(authenticateWithCredentials(bridge, 'nobody@example.com', 'x')).rejects.toThrow('Unknown username');
+  });
+
+  it('a portal user without a linked employee defaults to operator', async () => {
+    const { bridge } = await createFakeBridge();
+    const ts = new Date().toISOString();
+    await bridge.db.execute(
+      `INSERT INTO portal_users (id, email, name, employee_id, is_active, password_hash, created_at, updated_at)
+       VALUES ('pu-2', 'solo@example.com', 'Solo', NULL, 1, ?, ?, ?)`,
+      [await hashPassword('pw'), ts, ts]
+    );
+    const session = await authenticateWithCredentials(bridge, 'solo@example.com', 'pw');
+    expect(session.role).toBe('operator');
+  });
+
+  it('matches portal emails case-insensitively', async () => {
+    const { bridge } = await createFakeBridge();
+    const ts = new Date().toISOString();
+    await bridge.db.execute(
+      `INSERT INTO portal_users (id, email, name, employee_id, is_active, password_hash, created_at, updated_at)
+       VALUES ('pu-3', 'Casey@Example.com', 'Casey', NULL, 1, ?, ?, ?)`,
+      [await hashPassword('pw'), ts, ts]
+    );
+    // stored with mixed case, typed lowercase → still matches
+    const session = await authenticateWithCredentials(bridge, 'casey@example.com', 'pw');
+    expect(session.display_name).toBe('Casey');
   });
 });

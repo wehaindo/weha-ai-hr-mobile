@@ -7,11 +7,13 @@ import deviceConfig from '@/device.config';
 import { useAuthStore } from '@/stores/auth';
 import { authenticate, authenticateWithCredentials, authenticateWithMobile, authenticateWithMobileOtp, fetchActiveUsers, requestMobileLoginCode, type LoginUser } from '../actions';
 import { MobileAuthError } from '@/integration/mobile-auth/client';
-import { getMobileTenantSlug } from '../mobile-session';
+import { getMobileTenantSlug, setMobileTenantSlug } from '../mobile-session';
+import { toast } from '@/components/ui/toast';
 import UserAvatar from './UserAvatar';
 import PinInput from './PinInput';
 import PasswordLogin from './PasswordLogin';
 import MobileLogin, { type MobileLoginView } from './MobileLogin';
+import TenantSetup from './TenantSetup';
 
 export default function LoginScreen() {
   const bridge = useBridge();
@@ -35,6 +37,9 @@ export default function LoginScreen() {
   const showBack = enabled.includes('pin') && mode !== 'pin';
   const [mobileView, setMobileView] = useState<MobileLoginView>('password');
   const [defaultTenantSlug, setDefaultTenantSlug] = useState('');
+  // Distinguishes "no slug saved (show first-run setup)" from "still loading".
+  const [tenantSlugLoaded, setTenantSlugLoaded] = useState(false);
+  const [tenantBusy, setTenantBusy] = useState(false);
   const [pwBusy, setPwBusy] = useState(false);
   const [mobileBusy, setMobileBusy] = useState(false);
   const [error, setError] = useState<string | undefined>(undefined);
@@ -64,7 +69,8 @@ export default function LoginScreen() {
   }, [lockSeconds]);
 
   // Load the tenant slug remembered from the last successful mobile sign-in so
-  // the field is prefilled (type once; edit only to switch tenants).
+  // the field is prefilled (type once; edit only to switch tenants). Also used
+  // to decide whether the first-run tenant setup is needed.
   useEffect(() => {
     let cancelled = false;
     void getMobileTenantSlug(bridge)
@@ -73,11 +79,32 @@ export default function LoginScreen() {
       })
       .catch(() => {
         /* no remembered slug — field stays empty */
+      })
+      .finally(() => {
+        if (!cancelled) setTenantSlugLoaded(true);
       });
     return () => {
       cancelled = true;
     };
   }, [bridge]);
+
+  // First-run: persist the tenant slug, then flip to the login form (prefilled).
+  const handleTenantSetup = useCallback(
+    async (slug: string) => {
+      setError(undefined);
+      setTenantBusy(true);
+      try {
+        await setMobileTenantSlug(bridge, slug);
+        setDefaultTenantSlug(slug);
+        toast.add({ title: 'Tenant saved', description: slug, type: 'success' });
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Could not save the tenant');
+      } finally {
+        setTenantBusy(false);
+      }
+    },
+    [bridge]
+  );
 
   const handlePinSubmit = useCallback(
     async (pin: string) => {
@@ -204,18 +231,27 @@ export default function LoginScreen() {
             showBack={showBack}
           />
         ) : mode === 'mobile' ? (
-          <MobileLogin
-            view={mobileView}
-            onViewChange={setMobileView}
-            onSubmit={handleMobileSubmit}
-            onSubmitOtp={handleMobileOtpSubmit}
-            onRequestCode={handleRequestCode}
-            onCancel={() => switchMode('pin')}
-            error={error}
-            busy={mobileBusy}
-            defaultTenantSlug={defaultTenantSlug}
-            showBack={showBack}
-          />
+          !tenantSlugLoaded ? (
+            <div className="flex justify-center py-12">
+              <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+            </div>
+          ) : defaultTenantSlug ? (
+            <MobileLogin
+              view={mobileView}
+              onViewChange={setMobileView}
+              onSubmit={handleMobileSubmit}
+              onSubmitOtp={handleMobileOtpSubmit}
+              onRequestCode={handleRequestCode}
+              onCancel={() => switchMode('pin')}
+              error={error}
+              busy={mobileBusy}
+              defaultTenantSlug={defaultTenantSlug}
+              showBack={showBack}
+            />
+          ) : (
+            // First-run: no tenant slug saved yet — configure it before the form.
+            <TenantSetup onSubmit={handleTenantSetup} busy={tenantBusy} error={error} />
+          )
         ) : loading ? (
           <div className="flex justify-center py-12">
             <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />

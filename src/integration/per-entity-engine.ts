@@ -55,13 +55,19 @@ export class PerEntitySyncEngine {
     this.timer = null;
   }
 
-  async runNow(): Promise<{ synced: number; errors: number }> {
-    return this.tick();
+  /**
+   * Run one sync pass now. Pass `{ force: true }` to ignore the per-entity
+   * schedule and a tick already in flight — what the manual "Sync now" button
+   * does (the background loop keeps honoring schedules).
+   */
+  async runNow(options: { force?: boolean } = {}): Promise<{ synced: number; errors: number }> {
+    return this.tick(options);
   }
 
   private async loadEnabled(): Promise<IntegrationEntityRow[]> {
+    // `datahub` rows are owned by the data hub pipeline, not the REST engine.
     return this.bridge.db.query<IntegrationEntityRow>(
-      'SELECT * FROM integration_entities WHERE enabled = 1 ORDER BY entity_type ASC'
+      "SELECT * FROM integration_entities WHERE enabled = 1 AND sync_source != 'datahub' ORDER BY entity_type ASC"
     );
   }
 
@@ -79,8 +85,10 @@ export class PerEntitySyncEngine {
     );
   }
 
-  private async tick(): Promise<{ synced: number; errors: number }> {
-    if (this.running) return { synced: 0, errors: 0 };
+  private async tick(options: { force?: boolean } = {}): Promise<{ synced: number; errors: number }> {
+    // Background ticks yield to one already in flight; a manual force-sync proceeds —
+    // `inFlight` below still prevents the same entity running twice concurrently.
+    if (this.running && !options.force) return { synced: 0, errors: 0 };
     this.running = true;
     const store = useSyncStore.getState();
     store.set({ running: true });
@@ -98,9 +106,11 @@ export class PerEntitySyncEngine {
       for (const entity of ordered) {
         if (this.inFlight.has(entity.id)) continue;
 
-        const scheduleMs = parseScheduleSeconds(entity.schedule) * 1000;
-        const last = this.lastRunAt.get(entity.id) ?? 0;
-        if (nowMs - last < scheduleMs) continue;
+        if (!options.force) {
+          const scheduleMs = parseScheduleSeconds(entity.schedule) * 1000;
+          const last = this.lastRunAt.get(entity.id) ?? 0;
+          if (nowMs - last < scheduleMs) continue;
+        }
 
         this.inFlight.add(entity.id);
         this.lastRunAt.set(entity.id, nowMs);
@@ -177,6 +187,7 @@ export interface IntegrationEntityInput {
   base_url: string;
   endpoint: string;
   api_key?: string;
+  sync_source?: 'device' | 'datahub' | 'api_key';
   sync_direction?: 'pull' | 'push';
   schedule?: string;
   page_size?: number;
@@ -214,14 +225,15 @@ export class IntegrationService {
     const id = randomHex(16);
     const timestamp = now();
     await this.bridge.db.execute(
-      `INSERT INTO integration_entities (id, entity_type, name, type, status, base_url, api_key, endpoint, sync_direction, schedule, page_size, enabled, created_at, updated_at)
-       VALUES (?, ?, ?, 'rest', 'idle', ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO integration_entities (id, entity_type, name, type, status, base_url, api_key, sync_source, endpoint, sync_direction, schedule, page_size, enabled, created_at, updated_at)
+       VALUES (?, ?, ?, 'rest', 'idle', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         id,
         input.entity_type,
         input.name,
         input.base_url,
         input.api_key ?? null,
+        input.sync_source ?? 'device',
         input.endpoint,
         input.sync_direction ?? 'pull',
         input.schedule ?? '30s',
@@ -246,6 +258,7 @@ export class IntegrationService {
     if (patch.base_url !== undefined) set('base_url', patch.base_url);
     if (patch.endpoint !== undefined) set('endpoint', patch.endpoint);
     if (patch.api_key !== undefined) set('api_key', patch.api_key);
+    if (patch.sync_source !== undefined) set('sync_source', patch.sync_source);
     if (patch.sync_direction !== undefined) set('sync_direction', patch.sync_direction);
     if (patch.schedule !== undefined) set('schedule', patch.schedule);
     if (patch.page_size !== undefined) set('page_size', patch.page_size);

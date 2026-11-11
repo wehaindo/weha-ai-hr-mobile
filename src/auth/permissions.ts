@@ -59,3 +59,19 @@ export const SYSTEM_ROLES: RoleSeed[] = [
 ];
 
 export const DEFAULT_ROLES = SYSTEM_ROLES.map((r) => r.id);
+
+/**
+ * Map a synced free-text role (e.g. "Admin", "Cashier" from employees.role) to a
+ * built-in role id. Matches the built-in roles by id/name first, then by keyword;
+ * anything unrecognized falls back to 'operator' (least privilege).
+ */
+export function mapRole(roleName: string | null | undefined): string {
+  const r = (roleName ?? '').trim().toLowerCase();
+  if (!r) return 'operator';
+  for (const role of SYSTEM_ROLES) {
+    if (r === role.id || r === role.name.toLowerCase()) return role.id;
+  }
+  if (r.includes('admin')) return 'admin';
+  if (r.includes('manager')) return 'manager';
+  return 'operator';
+}

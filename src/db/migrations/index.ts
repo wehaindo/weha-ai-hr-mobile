@@ -25,6 +25,9 @@ import { migration0023DatahubEnrollment } from './0023_datahub_enrollment';
 import { migration0024MobileAuth } from './0024_mobile_auth';
 import { migration0025SeedDemoUser } from './0025_seed_demo_user';
 import { migration0026SampleAttendance } from './0026_sample_attendance';
+import { migration0027IntegrationAuthType } from './0027_integration_auth_type';
+import { migration0029SyncSource } from './0029_sync_source';
+import { migration0030DeviceSyncIdentity } from './0030_device_sync_identity';
 
 // Framework migrations — run on every platform before the app boots.
 // App-specific migrations: append here (create one file per migration).
@@ -55,4 +58,7 @@ export const frameworkMigrations: Migration[] = [
   migration0024MobileAuth,
   migration0025SeedDemoUser,
   migration0026SampleAttendance,
+  migration0027IntegrationAuthType,
+  migration0029SyncSource,
+  migration0030DeviceSyncIdentity,
 ];

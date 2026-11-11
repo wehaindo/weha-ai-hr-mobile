@@ -23,6 +23,7 @@ function entity(overrides: Partial<IntegrationEntityRow>): IntegrationEntityRow 
     status: 'idle',
     base_url: 'https://api.example.com',
     api_key: 'secret',
+    sync_source: 'api_key',
     endpoint: '/v1/widgets',
     sync_direction: 'pull',
     schedule: '30s',
@@ -188,6 +189,41 @@ describe('runEntitySync — pull', () => {
       fetchImpl,
     });
     expect(result.errors[0]).toContain('HTTP 500');
+  });
+
+  it('fills NOT NULL columns the response omits (e.g. a CHECK column)', async () => {
+    handle.engine.execute(
+      `CREATE TABLE gadgets (
+         id TEXT PRIMARY KEY,
+         code TEXT NOT NULL UNIQUE,
+         name TEXT NOT NULL,
+         status TEXT NOT NULL CHECK (status IN ('NEW','USED')),
+         created_at TEXT NOT NULL,
+         updated_at TEXT NOT NULL
+       )`
+    );
+    registerIntegrationEntity({ type: 'gadgets', table: 'gadgets', keys: ['code'] });
+
+    // Response has no `status` — the write must still satisfy the CHECK.
+    const fetchImpl = async () => jsonResponse([{ sku: 'G1', name: 'Gadget' }]);
+    const result = await runEntitySync({
+      bridge: handle.bridge,
+      entity: entity({ entity_type: 'gadgets', endpoint: '/g' }),
+      fieldMaps: fieldMaps([
+        { source_field: 'code', target_field: 'sku' },
+        { source_field: 'name', target_field: 'name' },
+      ]),
+      fetchImpl,
+    });
+
+    expect(result.errors).toEqual([]);
+    expect(result.pulled).toBe(1);
+
+    const rows = await handle.bridge.db.query<{ code: string; name: string; status: string }>(
+      'SELECT code, name, status FROM gadgets'
+    );
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toEqual({ code: 'G1', name: 'Gadget', status: 'NEW' }); // CHECK literal filled
   });
 });
 

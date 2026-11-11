@@ -44,7 +44,7 @@ const minimalModules: ModuleFlags = {
   print: false,
   hardware: false,
   onScreenKeyboard: false,
-  integration: false,
+  integration: true,
   datahub: true,
   ecr: false,
   realtime: false,

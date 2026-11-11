@@ -10,6 +10,9 @@
 //   push: local[source_field]    -> external[target_field]
 
 import type { DeviceBridge } from '@/platform';
+import deviceConfig from '@/device.config';
+import { getDeviceAuth, type DeviceAuth } from '@/auth/manager';
+import { getDeviceServerUrl } from '@/lib/device-server-url';
 import { getIntegrationEntityDef, type ResolvedIntegrationEntityDef } from './entities';
 
 export interface IntegrationEntityRow {
@@ -20,6 +23,8 @@ export interface IntegrationEntityRow {
   status: string;
   base_url: string;
   api_key: string | null;
+  /** How this integration syncs: device auth, the data hub pipeline, or an api_key endpoint. */
+  sync_source: 'device' | 'datahub' | 'api_key';
   endpoint: string;
   sync_direction: 'pull' | 'push';
   schedule: string;
@@ -106,8 +111,9 @@ export function authHeader(apiKey?: string | null): string | null {
 }
 
 interface TableMeta {
-  cols: Array<{ name: string; notnull: boolean; dflt: string | null; pk: boolean }>;
+  cols: Array<{ name: string; type: string; notnull: boolean; dflt: string | null; pk: boolean }>;
   fks: Array<{ from: string; table: string; to: string }>;
+  sql: string | null;
 }
 
 const tableMetaCache = new Map<string, TableMeta>();
@@ -116,16 +122,21 @@ async function getTableMeta(bridge: DeviceBridge, table: string): Promise<TableM
   const cached = tableMetaCache.get(table);
   if (cached) return cached;
 
-  const colRows = await bridge.db.query<{ name: string; notnull: number; dflt_value: string | null; pk: number }>(
+  const colRows = await bridge.db.query<{ name: string; type: string; notnull: number; dflt_value: string | null; pk: number }>(
     `PRAGMA table_info(${table})`
   );
   const fkRows = await bridge.db.query<{ from: string; table: string; to: string | null }>(
     `PRAGMA foreign_key_list(${table})`
   );
+  const sqlRows = await bridge.db.query<{ sql: string | null }>(
+    `SELECT sql FROM sqlite_master WHERE type = 'table' AND name = ?`,
+    [table]
+  );
 
   const meta: TableMeta = {
-    cols: colRows.map((c) => ({ name: c.name, notnull: !!c.notnull, dflt: c.dflt_value, pk: !!c.pk })),
+    cols: colRows.map((c) => ({ name: c.name, type: c.type, notnull: !!c.notnull, dflt: c.dflt_value, pk: !!c.pk })),
     fks: fkRows.map((fk) => ({ from: fk.from, table: fk.table, to: fk.to || 'id' })),
+    sql: sqlRows[0]?.sql ?? null,
   };
   tableMetaCache.set(table, meta);
   return meta;
@@ -140,6 +151,34 @@ function coerceValue(value: unknown): unknown {
   if (value === true) return 1;
   if (value === false) return 0;
   return value;
+}
+
+/**
+ * A valid literal for a CHECK-constrained column, read from the table's schema
+ * (e.g. `category IN ('RAW','FINISHED',…)` → 'RAW'). Lets a pull that doesn't
+ * supply the column still satisfy the constraint. Null when there's no usable CHECK.
+ */
+function checkFallback(sql: string | null, column: string): string | null {
+  if (!sql) return null;
+  const esc = column.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const inMatch = new RegExp(`CHECK\\s*\\(\\s*"?${esc}"?\\s+IN\\s*\\(([^)]*)\\)`, 'i').exec(sql);
+  if (inMatch) {
+    const str = /'((?:[^']|'')*)'/.exec(inMatch[1]);
+    if (str) return str[1].replace(/''/g, "'");
+    const num = /-?\d+(?:\.\d+)?/.exec(inMatch[1]);
+    if (num) return num[0];
+    return null;
+  }
+  const eqMatch = new RegExp(`CHECK\\s*\\(\\s*"?${esc}"?\\s*=\\s*'((?:[^']|'')*)'`, 'i').exec(sql);
+  if (eqMatch) return eqMatch[1].replace(/''/g, "'");
+  return null;
+}
+
+/** Type-based value for a NOT NULL column with no default and no CHECK. */
+function typeFallback(declType: string | undefined): unknown {
+  const t = (declType ?? '').toUpperCase();
+  if (t.includes('INT') || t.includes('REAL') || t.includes('FLOA') || t.includes('DOUB')) return 0;
+  return '';
 }
 
 /**
@@ -179,12 +218,24 @@ async function normalizeMapped(
   return out;
 }
 
-async function fetchExternal(entity: IntegrationEntityRow, fetchImpl: FetchLike): Promise<Record<string, unknown>[]> {
+async function fetchExternal(
+  entity: IntegrationEntityRow,
+  fetchImpl: FetchLike,
+  deviceAuth?: DeviceAuth | null,
+  serverUrl?: string
+): Promise<Record<string, unknown>[]> {
   const headers: Record<string, string> = {};
-  const auth = authHeader(entity.api_key);
-  if (auth) headers['Authorization'] = auth;
+  let baseUrl: string;
+  if (deviceAuth) {
+    // Device auth → framework external API `/api/device/{configCode}` (endpoint holds the code).
+    headers['Authorization'] = `Bearer ${deviceAuth.token}`;
+    baseUrl = buildUrl(serverUrl ?? deviceConfig.erp.baseUrl, `/api/device/${entity.endpoint}`);
+  } else {
+    const auth = authHeader(entity.api_key);
+    if (auth) headers['Authorization'] = auth;
+    baseUrl = buildUrl(entity.base_url, entity.endpoint);
+  }
 
-  const baseUrl = buildUrl(entity.base_url, entity.endpoint);
   const configured = Number(entity.page_size);
   const pageLimit = Number.isFinite(configured) && configured > 0 ? Math.floor(configured) : 100;
 
@@ -196,6 +247,7 @@ async function fetchExternal(entity: IntegrationEntityRow, fetchImpl: FetchLike)
     const url = new URL(baseUrl);
     url.searchParams.set('limit', String(pageLimit));
     url.searchParams.set('offset', String(offset));
+    if (deviceAuth && deviceAuth.tenantId) url.searchParams.set('tenantId', deviceAuth.tenantId);
 
     const res = await fetchImpl(url.toString(), { headers });
     if (!res.ok) {
@@ -245,10 +297,29 @@ async function upsertPullRow(
     }
   }
 
-  const cols = Object.keys(mapped);
-  if (cols.length === 0) return 'skipped';
+  // Nothing mapped → nothing to write (the no-field-maps case stays a no-op).
+  if (Object.keys(mapped).length === 0) return 'skipped';
+
+  // Fill NOT NULL columns the response didn't provide so the write can't fail on
+  // a missing value. Defaults are left to SQLite; ids and created/updated_at are
+  // handled by this statement; CHECK columns get a valid literal from the schema;
+  // foreign keys are skipped (they need a real referenced row). Only on INSERT —
+  // an UPDATE leaves existing column values untouched.
+  const meta = await getTableMeta(bridge, def.table);
+  const fkCols = new Set(meta.fks.map((f) => f.from));
+  const row: Record<string, unknown> = { ...mapped };
+  for (const col of meta.cols) {
+    if (col.name in row) continue;
+    if (!col.notnull || col.dflt !== null || col.pk) continue;
+    if (col.name === 'created_at' || col.name === 'updated_at') continue;
+    if (fkCols.has(col.name)) continue;
+    const check = checkFallback(meta.sql, col.name);
+    row[col.name] = check !== null ? check : typeFallback(col.type);
+  }
+
+  const cols = Object.keys(row);
   const placeholders = cols.map(() => '?').join(', ');
-  const values = cols.map((c) => mapped[c]);
+  const values = cols.map((c) => row[c]);
   await bridge.db.execute(
     `INSERT INTO ${def.table} (${cols.join(', ')}, created_at, updated_at) VALUES (${placeholders}, datetime('now'), datetime('now'))`,
     values
@@ -272,9 +343,27 @@ export async function runEntitySync(params: {
   let pushed = 0;
   let pushCursor: string | null = null;
 
+  // The data hub pipeline owns `sync_source='datahub'` rows — never run REST for them.
+  if (entity.sync_source === 'datahub') {
+    return { pulled: 0, pushed: 0, errors: [], pushCursor: null };
+  }
+
+  // Device auth → resolve the token+tenant once. This kind needs an activated device.
+  const deviceAuth = entity.sync_source === 'device' ? await getDeviceAuth(bridge) : null;
+  if (entity.sync_source === 'device' && !deviceAuth) {
+    return {
+      pulled: 0,
+      pushed: 0,
+      errors: ['Device not activated — activate it in Settings → Sync first.'],
+      pushCursor: null,
+    };
+  }
+  // Device-auth target URL (Sync-page override → env default), resolved once per run.
+  const serverUrl = deviceAuth ? await getDeviceServerUrl(bridge) : undefined;
+
   if (direction === 'pull') {
     try {
-      const items = await fetchExternal(entity, fetchImpl);
+      const items = await fetchExternal(entity, fetchImpl, deviceAuth, serverUrl);
       for (const record of items) {
         const ref = record.sku || record.code || record.customer_code || record.name || record.id || '?';
         try {
@@ -312,17 +401,28 @@ export async function runEntitySync(params: {
         rows = await bridge.db.query(`SELECT * FROM ${def.table}`);
       }
 
-      const url = buildUrl(entity.base_url, entity.endpoint);
+      // URL + auth headers differ by kind: device auth → external API + token/tenant.
+      let url: string;
+      const pushHeaders: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (deviceAuth) {
+        url = buildUrl(serverUrl ?? deviceConfig.erp.baseUrl, `/api/device/${entity.endpoint}`);
+        pushHeaders['Authorization'] = `Bearer ${deviceAuth.token}`;
+        if (deviceAuth.tenantId) {
+          url += `${url.includes('?') ? '&' : '?'}tenantId=${encodeURIComponent(deviceAuth.tenantId)}`;
+        }
+      } else {
+        url = buildUrl(entity.base_url, entity.endpoint);
+        const auth = authHeader(entity.api_key);
+        if (auth) pushHeaders['Authorization'] = auth;
+      }
+
       for (const row of rows) {
         try {
           const payload = mapPush(row, fieldMaps);
           if (def.idempotency) {
             payload.idempotency_key = `POS-${entity.entity_type}-${row.id}`;
           }
-          const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-          const auth = authHeader(entity.api_key);
-          if (auth) headers['Authorization'] = auth;
-          const res = await fetchImpl(url, { method: 'POST', headers, body: JSON.stringify(payload) });
+          const res = await fetchImpl(url, { method: 'POST', headers: pushHeaders, body: JSON.stringify(payload) });
           if (res.ok) pushed++;
           else errors.push(`${entity.entity_type}:${row.id} HTTP ${res.status}`);
         } catch (err) {

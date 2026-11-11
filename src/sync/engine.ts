@@ -9,6 +9,8 @@
 
 import type { DeviceBridge } from '@/platform';
 import { DeviceClient } from './device-client';
+import { parseActivationInput } from './credentials';
+import { getDeviceServerUrl } from '@/lib/device-server-url';
 import { getOutboxStats, getPendingItems, markOutboxStatus, type OutboxItem } from './outbox';
 import { getApplier } from './registry';
 import { useSyncStore } from './sync-store';
@@ -82,8 +84,18 @@ export class SyncEngine {
       this.integration = rows[0];
     }
 
-    const cfg = JSON.parse(this.integration.config) as { baseUrl?: string; tenantSlug?: string; deviceCode?: string };
-    this.client = new DeviceClient(cfg.baseUrl || this.config.baseUrl, cfg.tenantSlug ?? '');
+    const cfg = JSON.parse(this.integration.config) as {
+      baseUrl?: string;
+      tenantSlug?: string;
+      tenantId?: string;
+      deviceCode?: string;
+    };
+    // activate()/provision() persist the tenant as `tenantId`; the bootstrap row
+    // (and some legacy rows) use `tenantSlug`. Accept either so the tenant — and
+    // every `?tenantId=` data call that depends on it — survives an app reload.
+    const tenant = cfg.tenantSlug || cfg.tenantId || '';
+    // Device-auth server URL: Sync-page override → the configured default (env).
+    this.client = new DeviceClient(await getDeviceServerUrl(this.bridge, this.config.baseUrl), tenant);
     this.client.setToken(this.integration.device_token);
 
     this.perEntity = new PerEntitySyncEngine(this.bridge, { pollIntervalMs: this.config.pollIntervalMs });
@@ -91,7 +103,7 @@ export class SyncEngine {
     useSyncStore.getState().set({
       activated: !!this.integration.device_token,
       deviceCode: cfg.deviceCode ?? null,
-      tenantSlug: cfg.tenantSlug ?? null,
+      tenantSlug: tenant || null,
     });
   }
 
@@ -117,6 +129,92 @@ export class SyncEngine {
     this.client.setTenant(tenantSlug);
 
     useSyncStore.getState().set({ activated: true, deviceCode, tenantSlug });
+  }
+
+  /**
+   * Store a pre-minted device token directly — no activation round-trip. Same
+   * persistence as activate(), minus the HTTP exchange. Only grants server data
+   * access when the backend Device row is already ACTIVE (activation or
+   * create-device-token.ts do that); otherwise reads still 403.
+   */
+  async provision(deviceToken: string, tenantSlug: string): Promise<void> {
+    if (!this.client || !this.integration) throw new Error('Sync engine not loaded');
+    const cfg = JSON.parse(this.integration.config) as Record<string, unknown>;
+    const deviceCode = (cfg.deviceCode as string | undefined) ?? null;
+    const merged = { ...cfg, tenantId: tenantSlug };
+
+    await this.bridge.db.execute(
+      "UPDATE integrations SET device_token = ?, status = 'active', config = ?, updated_at = ? WHERE id = ?",
+      [deviceToken, JSON.stringify(merged), now(), this.integration.id]
+    );
+    await this.bridge.db.execute(
+      "INSERT INTO device_settings (key, value, updated_at) VALUES ('device.activated', 'true', ?) ON CONFLICT(key) DO UPDATE SET value = 'true', updated_at = excluded.updated_at",
+      [now()]
+    );
+
+    this.integration = { ...this.integration, device_token: deviceToken, config: JSON.stringify(merged), status: 'active' };
+    this.client.setToken(deviceToken);
+    this.client.setTenant(tenantSlug);
+
+    useSyncStore.getState().set({ activated: true, deviceCode, tenantSlug });
+  }
+
+  /**
+   * Entry point for the activation box: parse whatever was pasted (activation
+   * code, activation link, or a device token) and run the matching path.
+   * Returns which path ran so the UI can word the toast correctly.
+   */
+  async activateFromInput(raw: string, tenantHint?: string): Promise<'activated' | 'provisioned'> {
+    const parsed = parseActivationInput(raw, tenantHint);
+    if (parsed.kind === 'error') throw new Error(parsed.message);
+    if (parsed.kind === 'activation') {
+      await this.activate(parsed.token);
+      return 'activated';
+    }
+    await this.provision(parsed.deviceToken, parsed.tenantId);
+    return 'provisioned';
+  }
+
+  /**
+   * Clear the locally stored activation so the device can be activated (or
+   * provisioned) again with a new token. LOCAL only — the backend token stays
+   * valid until revoked there (dashboard → device → deactivate). Sync loops are
+   * left running: `tick()` and device-auth integrations already guard on the
+   * missing token, and `activate()` does not restart them.
+   */
+  async clearActivation(): Promise<void> {
+    if (!this.integration) throw new Error('Sync engine not loaded');
+
+    const cfg = JSON.parse(this.integration.config) as Record<string, unknown>;
+    delete cfg.tenantSlug;
+    delete cfg.tenantId;
+    delete cfg.deviceCode;
+
+    await this.bridge.db.execute(
+      "UPDATE integrations SET device_token = NULL, status = 'inactive', config = ?, updated_at = ? WHERE id = ?",
+      [JSON.stringify(cfg), now(), this.integration.id]
+    );
+    await this.bridge.db.execute(
+      "INSERT INTO device_settings (key, value, updated_at) VALUES ('device.activated', 'false', ?) ON CONFLICT(key) DO UPDATE SET value = 'false', updated_at = excluded.updated_at",
+      [now()]
+    );
+
+    this.integration = {
+      ...this.integration,
+      device_token: null,
+      config: JSON.stringify(cfg),
+      status: 'inactive',
+    };
+    this.client?.setToken(null);
+    this.client?.setTenant('');
+
+    useSyncStore.getState().set({
+      activated: false,
+      deviceCode: null,
+      tenantSlug: null,
+      erpReachable: null,
+      lastError: null,
+    });
   }
 
   async testConnection(): Promise<{ success: boolean; durationMs: number; error?: string }> {
