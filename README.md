@@ -95,6 +95,7 @@ Change it immediately on a real device.
 ## Docs
 
 - [Features](docs/FEATURES.md) — everything the framework ships, by category, with a per-target matrix
+- [Platform support](docs/PLATFORM-SUPPORT.md) — what runs on web vs Capacitor vs Electron, degradation rules, gating code
 - [Architecture](docs/ARCHITECTURE.md) — bridge, database, sync, auth, theming
 - [Creating a device app](docs/CREATING-A-DEVICE-APP.md) — step-by-step extension guide
 - [Mobile auth](docs/MOBILE-AUTH.md) — WEHA-account login (password/OTP), setup links, env config
