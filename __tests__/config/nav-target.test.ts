@@ -6,6 +6,8 @@ async function loadNav(target: string | undefined) {
   vi.resetModules();
   if (target === undefined) {
     vi.unstubAllEnvs();
+    // Force the default path regardless of the ambient NEXT_PUBLIC_APP_TARGET.
+    delete process.env.NEXT_PUBLIC_APP_TARGET;
   } else {
     vi.stubEnv('NEXT_PUBLIC_APP_TARGET', target);
   }

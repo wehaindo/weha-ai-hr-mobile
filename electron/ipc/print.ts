@@ -2,10 +2,7 @@
 
 import { ipcMain } from 'electron';
 import * as net from 'net';
-import * as os from 'os';
-import * as path from 'path';
-import * as fs from 'fs';
-import { execFile } from 'child_process';
+import { sendToWindowsDriver } from '../services/windows-print';
 
 function sendRawTcp(target: string, bytes: Uint8Array): Promise<void> {
   return new Promise((resolve, reject) => {
@@ -22,19 +19,6 @@ function sendRawTcp(target: string, bytes: Uint8Array): Promise<void> {
     socket.on('error', (err) => reject(err));
     socket.on('close', (hadError) => {
       if (!hadError) resolve();
-    });
-  });
-}
-
-function sendToWindowsDriver(printerName: string, bytes: Uint8Array): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const tmpFile = path.join(os.tmpdir(), `print-${Date.now()}.prn`);
-    fs.writeFileSync(tmpFile, Buffer.from(bytes));
-    const ps = `Get-Content -LiteralPath '${tmpFile}' -AsByteStream | Out-Printer -Name '${printerName.replace(/'/g, "''")}'`;
-    execFile('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', ps], (err) => {
-      fs.unlink(tmpFile, () => {});
-      if (err) reject(err);
-      else resolve();
     });
   });
 }

@@ -37,12 +37,13 @@ const fullModules = {
 // TS enforces the minimal profile covers every module key.
 type ModuleFlags = { [K in keyof typeof fullModules]: boolean };
 
-// Minimal profile: web/pwa and phone Capacitor — sync, device enrollment and
-// auth only; no printing, hardware, cloud targets or dev tooling.
+// Minimal profile: web/pwa and phone Capacitor — sync, device enrollment, auth,
+// and the hardware settings page (registration). No printing, cloud targets or
+// dev tooling. Note: hardware I/O (serial/print/ECR) still requires Electron.
 const minimalModules: ModuleFlags = {
   sync: true,
   print: false,
-  hardware: false,
+  hardware: true,
   onScreenKeyboard: false,
   integration: true,
   datahub: true,

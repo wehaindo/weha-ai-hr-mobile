@@ -5,6 +5,9 @@ async function loadConfig(target: string | undefined) {
   vi.resetModules();
   if (target === undefined) {
     vi.unstubAllEnvs();
+    // Force the default path regardless of the ambient NEXT_PUBLIC_APP_TARGET
+    // (which may be set to electron while `electron:dev` runs).
+    delete process.env.NEXT_PUBLIC_APP_TARGET;
   } else {
     vi.stubEnv('NEXT_PUBLIC_APP_TARGET', target);
   }
@@ -22,7 +25,7 @@ describe('device.config build target', () => {
     expect(config.target).toBe('web');
     expect(config.modules.sync).toBe(true);
     expect(config.modules.print).toBe(false);
-    expect(config.modules.hardware).toBe(false);
+    expect(config.modules.hardware).toBe(true);
   });
 
   it('falls back to web for unknown values', async () => {
