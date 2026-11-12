@@ -127,9 +127,10 @@ toast (`src/app/settings/hardware/page.tsx`).
 Gates: `modules.push` (on everywhere) **and** per-device KV `push.enabled`.
 
 > **Capacitor caveat:** only `@capacitor/push-notifications` is installed and
-> imported. The generated Android project currently syncs **zero plugins**
-> (`android/app/src/main/assets/capacitor.plugins.json` is `[]`) — run
-> `npx cap sync android` after adding/changing plugins.
+> imported. Plugin registration is generated — run `npm run cap:sync` (or
+> `npx cap sync android`) after adding/changing plugins; `capacitor.plugins.json`
+> and the gradle wiring come from that step (they are gitignored as generated
+> files). Native FCM additionally requires `android/app/google-services.json`.
 
 ### Module profile matrix (build-time UI surface)
 

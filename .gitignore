@@ -22,8 +22,9 @@
 /electron/dist/
 /dist/
 
-# capacitor native projects are generated (commit them only if you customize native code)
-/android
+# capacitor: the android project IS customized (manifest permissions, FCM
+# channel, MainActivity package) and is committed — build artifacts and the
+# cap-synced web bundle are ignored via android/.gitignore. ios/ is not used yet.
 /ios
 
 # production
