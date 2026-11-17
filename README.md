@@ -94,6 +94,7 @@ Change it immediately on a real device.
 
 ## Docs
 
+- [Business requirements (BRD)](docs/BRD.md) — objectives, scope, functional/non-functional requirements, risks
 - [Features](docs/FEATURES.md) — everything the framework ships, by category, with a per-target matrix
 - [Platform support](docs/PLATFORM-SUPPORT.md) — what runs on web vs Capacitor vs Electron, degradation rules, gating code
 - [Architecture](docs/ARCHITECTURE.md) — bridge, database, sync, auth, theming
