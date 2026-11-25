@@ -122,6 +122,7 @@ General · Layout · Users · Security · Hardware · Templates · Receipt · In
 *(— = module flag off for that build.)*
 
 ## Docs
+- [PLATFORM-SUPPORT.md](PLATFORM-SUPPORT.md) — per-platform behavior (web / Capacitor / Electron), degradation contract, gating code
 - [ARCHITECTURE.md](ARCHITECTURE.md) — bridge, database, sync, auth, theming
 - [CREATING-A-DEVICE-APP.md](CREATING-A-DEVICE-APP.md) — step-by-step extension guide
 - [MOBILE-AUTH.md](MOBILE-AUTH.md) — WEHA-account login (password/OTP)

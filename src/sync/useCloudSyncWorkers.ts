@@ -8,6 +8,8 @@ import { useEffect } from 'react';
 import { useBridge, type DeviceBridge } from '@/platform';
 import deviceConfig from '@/device.config';
 import { DatahubSyncWorker, DatahubService } from '@/integration/datahub/sync-worker';
+import { registerDatahubIntegrations } from '@/integration/datahub/integrations';
+import { getToken } from '@/auth/manager';
 import { getGoogleSyncWorker } from '@/integration/cloud/google/worker';
 import { getSupabaseSyncWorker } from '@/integration/cloud/supabase/worker';
 import { getGristSyncWorker } from '@/integration/cloud/grist/worker';
@@ -36,10 +38,12 @@ export function useCloudSyncWorkers(): void {
       // Data Hub — start only when enabled and a config exists.
       if (deviceConfig.modules.datahub) {
         try {
+          // Bridge: expose `Sync via: Data Hub` rows to the hub entity registry.
+          await registerDatahubIntegrations(bridge);
           const config = await new DatahubService(bridge).getConfig();
           if (config && config.enabled === 1 && !cancelled) {
             const worker = new DatahubSyncWorker(bridge);
-            void worker.start(config.endpoint, config.device_token ?? '');
+            void worker.start(config.endpoint, (await getToken(bridge, 'datahub')) ?? '');
             stops.push(() => worker.stop());
           }
         } catch {

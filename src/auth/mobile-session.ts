@@ -34,6 +34,11 @@ export async function getMobileTenantSlug(bridge: DeviceBridge): Promise<string>
   }
 }
 
+/** Persist the tenant slug chosen during first-run setup (and on later sign-ins). */
+export async function setMobileTenantSlug(bridge: DeviceBridge, slug: string): Promise<void> {
+  await bridge.kv.set(MOBILE_TENANT_SLUG_KEY, slug.trim());
+}
+
 export async function loadMobileSession(bridge: DeviceBridge): Promise<StoredMobileSession | null> {
   const rows = await bridge.db.query<SessionRow>(
     `SELECT email, tenant_slug, access_token, refresh_token, expires_at, identity_json

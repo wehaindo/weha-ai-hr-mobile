@@ -13,9 +13,10 @@ const eslintConfig = defineConfig([
     },
   },
   {
+    // Standalone CommonJS node scripts (scripts/*.js) legitimately use require();
+    // the TS-oriented rule is for ESM/TS sources only.
     files: ["scripts/**/*.js"],
     rules: {
-      // Standalone Node scripts are CommonJS — require() is correct there.
       "@typescript-eslint/no-require-imports": "off",
     },
   },

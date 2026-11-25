@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { useBridge } from '@/platform';
-import { HardwareService, resolveTarget } from '@/lib/hardware/hardware-manager';
+import { HardwareService, resolveTarget, resolveConnection } from '@/lib/hardware/hardware-manager';
 import { EcrService } from '@/lib/ecr/ecr-manager';
 import { PrintService, buildEscPosBytes, buildTestReceiptContent } from '@/lib/print';
 import type { HardwareDevice, HardwareDeviceType, HardwareConnectionType } from '@/types';
@@ -31,7 +31,7 @@ const DEVICE_TYPES: { value: HardwareDeviceType; label: string }[] = [
 
 const CONNECTION_TYPES: { value: HardwareConnectionType; label: string }[] = [
   { value: 'network', label: 'Network (TCP)' },
-  { value: 'usb', label: 'USB (Windows driver)' },
+  { value: 'usb', label: 'Windows printer' },
   { value: 'serial', label: 'Serial / Bluetooth' },
 ];
 
@@ -209,6 +209,39 @@ export default function HardwareSettingsPage() {
     }
   }
 
+  /** Send a short test payload over a generic serial peripheral (non-printer). */
+  async function sendSerialTest(device: HardwareDevice): Promise<void> {
+    if (!service) return;
+    setBusy(true);
+    try {
+      const connection = resolveConnection(device);
+      if (connection.type !== 'serial') {
+        toast.add({ title: 'Not a serial device', type: 'error' });
+        return;
+      }
+      const payload = new TextEncoder().encode(`TEST ${new Date().toISOString()}\r\n`);
+      await bridge.hardware.serial(
+        { port_path: connection.port_path ?? '', baud_rate: connection.baud_rate },
+        payload
+      );
+      toast.add({
+        title: `Test data sent to ${device.name}`,
+        description: `${payload.length} bytes → ${connection.port_path ?? ''} @ ${connection.baud_rate} baud`,
+        type: 'success',
+      });
+      await service.log(device.id, 'test_serial', 'success', `sent ${payload.length} bytes`);
+      await load();
+    } catch (err) {
+      toast.add({
+        title: 'Serial test failed',
+        description: err instanceof Error ? err.message : String(err),
+        type: 'error',
+      });
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function discover(): Promise<void> {
     if (!service) return;
     setDiscovering(true);
@@ -221,6 +254,12 @@ export default function HardwareSettingsPage() {
     } finally {
       setDiscovering(false);
     }
+  }
+
+  // Installed Windows printers discovered so far (no serial port) — for the picker.
+  const installedPrinters: string[] = [];
+  for (const d of discovered) {
+    if (d.system_name && !d.port_path) installedPrinters.push(d.system_name);
   }
 
   return (
@@ -290,6 +329,20 @@ export default function HardwareSettingsPage() {
                             Print
                           </Button>
                         )}
+                        {device.connection_type === 'serial' &&
+                          !device.type.endsWith('_printer') &&
+                          device.type !== 'payment_terminal' && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              disabled={busy}
+                              onClick={() => void sendSerialTest(device)}
+                              data-testid={`test-serial-${device.id}`}
+                              title="Send test data over serial"
+                            >
+                              Send
+                            </Button>
+                          )}
                         <Button variant="ghost" size="sm" disabled={busy} onClick={() => service && void service.setDefault(device.id).then(load)}>
                           <Star className="size-3.5" />
                         </Button>
@@ -406,10 +459,39 @@ export default function HardwareSettingsPage() {
               )}
 
               {form.connection_type === 'usb' && (
-                <div className="space-y-2">
-                  <Label htmlFor="device-system-name">Printer name (Windows)</Label>
-                  <Input id="device-system-name" value={form.system_name} onChange={(e) => setForm({ ...form, system_name: e.target.value })} placeholder="POS-PRINTER" />
-                </div>
+                <>
+                  <div className="space-y-2">
+                    <Label>Installed printer</Label>
+                    <Select
+                      value={installedPrinters.includes(form.system_name) ? form.system_name : ''}
+                      onValueChange={(name) => setForm({ ...form, system_name: name ?? '' })}
+                    >
+                      <SelectTrigger data-testid="installed-printer-select">
+                        <SelectValue
+                          placeholder={
+                            installedPrinters.length
+                              ? 'Choose a printer…'
+                              : 'No printers found — use Discover above'
+                          }
+                        />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {installedPrinters.map((p) => (
+                          <SelectItem key={p} value={p}>
+                            {p}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">
+                      Printers installed on this Windows machine (Discover above to refresh).
+                    </p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="device-system-name">Printer name (Windows)</Label>
+                    <Input id="device-system-name" data-testid="printer-name-input" value={form.system_name} onChange={(e) => setForm({ ...form, system_name: e.target.value })} placeholder="POS-PRINTER" />
+                  </div>
+                </>
               )}
 
               {form.connection_type === 'serial' && (

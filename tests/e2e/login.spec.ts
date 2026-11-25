@@ -35,4 +35,27 @@ test.describe('login', () => {
 
     await expect(page.getByTestId('user-grid')).toBeVisible();
   });
+
+  test('pin mode offers the on-page switch links to the other enabled types', async ({ page }) => {
+    await resetAppState(page);
+
+    await expect(page.getByTestId('user-grid')).toBeVisible();
+    // With NEXT_PUBLIC_LOGIN_METHOD=all (forced for e2e), pin mode shows both
+    // on-page toggle links (HRD-mobile style method picker).
+    await expect(page.getByTestId('toggle-password-login')).toBeVisible();
+    await expect(page.getByTestId('toggle-mobile-login')).toBeVisible();
+  });
+
+  test('signs in with username and password', async ({ page }) => {
+    await resetAppState(page);
+
+    await page.getByTestId('toggle-password-login').click();
+    await expect(page.getByTestId('password-login-form')).toBeVisible();
+    await page.getByTestId('login-username').fill('admin');
+    await page.getByTestId('login-password').fill('admin123');
+    await page.getByTestId('login-submit').click();
+
+    await expect(page.getByTestId('dashboard')).toBeVisible({ timeout: 30000 });
+    await expect(page.getByTestId('page-title')).toHaveText('Dashboard');
+  });
 });

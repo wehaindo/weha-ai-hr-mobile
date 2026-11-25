@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useBridge } from '@/platform';
 import deviceConfig from '@/device.config';
 import { useDeviceProfile } from '@/hooks/useDeviceProfile';
+import { getDeviceServerUrl } from '@/lib/device-server-url';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 
@@ -24,17 +25,20 @@ export default function AboutSettingsPage() {
   const profile = useDeviceProfile();
   const [info, setInfo] = useState<AppInfoState | null>(null);
   const [migrations, setMigrations] = useState<MigrationRow[]>([]);
+  const [serverUrl, setServerUrl] = useState('');
 
   useEffect(() => {
     let cancelled = false;
     void (async () => {
-      const [appInfo, migrationRows] = await Promise.all([
+      const [appInfo, migrationRows, url] = await Promise.all([
         bridge.appInfo(),
         bridge.db.query<MigrationRow>('SELECT id, applied_at FROM _migrations ORDER BY id'),
+        getDeviceServerUrl(bridge),
       ]);
       if (!cancelled) {
         setInfo(appInfo);
         setMigrations(migrationRows);
+        setServerUrl(url);
       }
     })();
     return () => {
@@ -49,7 +53,7 @@ export default function AboutSettingsPage() {
     ['App id', deviceConfig.appId],
     ['Device type', profile ? `${profile.type} (${profile.tier})` : '—'],
     ['Screen', profile ? `${profile.width}×${profile.height}${profile.isTouch ? ' · touch' : ''}` : '—'],
-    ['ERP base URL', deviceConfig.erp.baseUrl],
+    ['Server URL (device auth)', serverUrl],
     ['Data location', info?.userDataPath ?? 'browser storage (IndexedDB)'],
   ];
 

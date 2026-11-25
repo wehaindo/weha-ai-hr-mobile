@@ -25,6 +25,8 @@ interface MobileLoginProps {
   busy?: boolean;
   /** Tenant slug remembered from the last successful sign-in (prefills the field). */
   defaultTenantSlug?: string;
+  /** Hide the Back button when the page is locked to this single method. */
+  showBack?: boolean;
 }
 
 export default function MobileLogin({
@@ -37,6 +39,7 @@ export default function MobileLogin({
   error,
   busy,
   defaultTenantSlug,
+  showBack = true,
 }: MobileLoginProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -195,9 +198,11 @@ export default function MobileLogin({
       )}
 
       <div className="flex gap-2">
-        <Button type="button" variant="outline" className="flex-1" onClick={onCancel} data-testid="mobile-back">
-          Back
-        </Button>
+        {showBack && (
+          <Button type="button" variant="outline" className="flex-1" onClick={onCancel} data-testid="mobile-back">
+            Back
+          </Button>
+        )}
         <Button
           type="submit"
           className="flex-1"

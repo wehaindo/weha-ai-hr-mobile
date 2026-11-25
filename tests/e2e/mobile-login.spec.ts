@@ -89,40 +89,73 @@ async function mockMobileAuth(
   return calls;
 }
 
-async function openMobilePasswordForm(page: Page): Promise<void> {
+/** Complete the first-run tenant setup if it is shown (no slug saved yet). */
+async function completeTenantSetup(page: Page, slug = 'default'): Promise<void> {
+  const setup = page.getByTestId('tenant-setup-form');
+  try {
+    await setup.waitFor({ state: 'visible', timeout: 3000 });
+  } catch {
+    return; // slug already saved → the login form shows directly
+  }
+  await page.getByTestId('tenant-setup-input').fill(slug);
+  await page.getByTestId('tenant-setup-save').click();
+  await setup.waitFor({ state: 'hidden' });
+}
+
+async function openMobilePasswordForm(page: Page, slug = 'default'): Promise<void> {
   await page.getByTestId('toggle-mobile-login').click();
+  await completeTenantSetup(page, slug);
   await page.getByTestId('mobile-email').fill(SESSION.user.email);
   await page.getByTestId('mobile-password').fill('secret-password');
 }
 
 test.describe('mobile login (WEHA account)', () => {
-  test('signs in with email + password and lands on the dashboard', async ({ page }) => {
+  test('first run asks for the tenant slug, then signs in with email + password', async ({ page }) => {
     await resetAppState(page);
     const calls = await mockMobileAuth(page);
 
-    await openMobilePasswordForm(page);
-    // optional tenant slug field (multi-tenant servers) is present and empty by default
+    await openMobilePasswordForm(page, 'default');
+    // the tenant field is prefilled with the slug saved during setup
     await expect(page.getByTestId('mobile-tenant')).toBeVisible();
     await page.getByTestId('mobile-submit').click();
 
     await expect(page.getByTestId('dashboard')).toBeVisible({ timeout: 30000 });
     await expect(page.getByTestId('page-title')).toHaveText('Dashboard');
 
-    // the framework received the credentials verbatim (no tenant → omitted)
     expect(calls.loginCalls).toHaveLength(1);
-    expect(calls.loginCalls[0]).toMatchObject({ email: SESSION.user.email, password: 'secret-password' });
-    expect(calls.loginCalls[0]).not.toHaveProperty('tenantSlug');
+    expect(calls.loginCalls[0]).toMatchObject({
+      email: SESSION.user.email,
+      password: 'secret-password',
+      tenantSlug: 'default',
+    });
+  });
+
+  test('first run shows the tenant setup step before the login form', async ({ page }) => {
+    await resetAppState(page);
+    await mockMobileAuth(page);
+
+    await page.getByTestId('toggle-mobile-login').click();
+
+    // setup first — the login form is not reachable until a slug is saved
+    await expect(page.getByTestId('tenant-setup-form')).toBeVisible();
+    await expect(page.getByTestId('mobile-email')).toHaveCount(0);
+    await expect(page.getByTestId('tenant-setup-save')).toBeDisabled(); // required
+
+    await page.getByTestId('tenant-setup-input').fill('acme');
+    await expect(page.getByTestId('tenant-setup-save')).toBeEnabled();
+    await page.getByTestId('tenant-setup-save').click();
+
+    // now the login form appears with the slug prefilled
+    await expect(page.getByTestId('mobile-login-form')).toBeVisible();
+    await expect(page.getByTestId('mobile-tenant')).toHaveValue('acme');
   });
 
   test('remembers the tenant slug after a successful sign-in', async ({ page }) => {
     await resetAppState(page);
     const calls = await mockMobileAuth(page);
 
-    // type the tenant slug once
-    await page.getByTestId('toggle-mobile-login').click();
-    await page.getByTestId('mobile-email').fill(SESSION.user.email);
-    await page.getByTestId('mobile-password').fill('secret-password');
-    await page.getByTestId('mobile-tenant').fill('acme');
+    // setup saves the slug and reaches the login form
+    await openMobilePasswordForm(page, 'acme');
     await page.getByTestId('mobile-submit').click();
 
     await expect(page.getByTestId('dashboard')).toBeVisible({ timeout: 30000 });
@@ -133,8 +166,9 @@ test.describe('mobile login (WEHA account)', () => {
     await page.getByTestId('logout').click();
     await expect(page.getByTestId('user-grid')).toBeVisible({ timeout: 30000 });
 
-    // reopen mobile login → the remembered slug is prefilled (type once)
+    // reopen mobile login → slug is saved, so setup is skipped and the form is prefilled
     await page.getByTestId('toggle-mobile-login').click();
+    await expect(page.getByTestId('tenant-setup-form')).toHaveCount(0);
     await expect(page.getByTestId('mobile-tenant')).toHaveValue('acme');
   });
 
@@ -173,6 +207,7 @@ test.describe('mobile login (WEHA account)', () => {
     await mockMobileAuth(page);
 
     await page.getByTestId('toggle-mobile-login').click();
+    await completeTenantSetup(page);
     await page.getByTestId('mobile-email').fill(SESSION.user.email);
     await page.getByTestId('mobile-toggle-otp').click();
     await page.getByTestId('mobile-send-code').click();

@@ -26,8 +26,11 @@ import { migration0024MobileAuth } from './0024_mobile_auth';
 import { migration0025EssPermissions } from './0025_ess_permissions';
 import { migration0026AttendanceQueue } from './0026_attendance_queue';
 import { migration0027EssApprovePermission } from './0027_ess_approve_permission';
+import { migration0027IntegrationAuthType } from './0027_integration_auth_type';
 import { migration0028SeedDemoUser } from './0028_seed_demo_user';
 import { migration0029SampleAttendance } from './0029_sample_attendance';
+import { migration0029SyncSource } from './0029_sync_source';
+import { migration0030DeviceSyncIdentity } from './0030_device_sync_identity';
 
 // Framework migrations — run on every platform before the app boots.
 // App-specific migrations: append here (create one file per migration).
@@ -59,6 +62,9 @@ export const frameworkMigrations: Migration[] = [
   migration0025EssPermissions,
   migration0026AttendanceQueue,
   migration0027EssApprovePermission,
+  migration0027IntegrationAuthType,
   migration0028SeedDemoUser,
   migration0029SampleAttendance,
+  migration0029SyncSource,
+  migration0030DeviceSyncIdentity,
 ];

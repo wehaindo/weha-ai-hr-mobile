@@ -5,6 +5,7 @@ import { useBridge } from '@/platform';
 import { getSyncEngine } from '@/sync/useSyncWorker';
 import { useSyncStore } from '@/sync/sync-store';
 import { clearCompleted } from '@/sync/outbox';
+import { getDeviceServerUrl, setDeviceServerUrl } from '@/lib/device-server-url';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -26,6 +27,8 @@ export default function SyncPage() {
   const bridge = useBridge();
   const state = useSyncStore();
   const [activationToken, setActivationToken] = useState('');
+  const [provisionTenant, setProvisionTenant] = useState('');
+  const [serverUrl, setServerUrl] = useState('');
   const [busy, setBusy] = useState<string | null>(null);
   const [log, setLog] = useState<SyncLogRow[]>([]);
 
@@ -39,6 +42,17 @@ export default function SyncPage() {
   useEffect(() => {
     void loadLog();
   }, [loadLog, state.lastRunAt]);
+
+  useEffect(() => {
+    void getDeviceServerUrl(bridge).then(setServerUrl);
+  }, [bridge]);
+
+  async function saveServerUrl(): Promise<void> {
+    await run('Save server URL', async () => {
+      await setDeviceServerUrl(bridge, serverUrl);
+      toast.add({ title: 'Server URL saved', type: 'success' });
+    });
+  }
 
   async function run(label: string, fn: () => Promise<void>): Promise<void> {
     setBusy(label);
@@ -107,11 +121,44 @@ export default function SyncPage() {
         </Card>
       </div>
 
+      {/* Device-auth server URL — editable here so device auth isn't tied to the env value. */}
+      <Card data-testid="server-url-card">
+        <CardHeader className="pb-2">
+          <CardDescription>Server URL (device auth)</CardDescription>
+          <CardTitle className="text-lg">Backend endpoint</CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-3 sm:flex-row sm:items-end">
+          <div className="flex-1 space-y-2">
+            <Label htmlFor="server-url">Server URL</Label>
+            <Input
+              id="server-url"
+              value={serverUrl}
+              onChange={(e) => setServerUrl(e.target.value)}
+              placeholder="https://framework.weha-id.com"
+              data-testid="server-url-input"
+            />
+            <p className="text-xs text-muted-foreground">
+              Where activation and <code>/api/device/…</code> calls are sent (device auth). Mobile auth keeps
+              the env URL.
+            </p>
+          </div>
+          <Button
+            disabled={busy !== null || !serverUrl.trim()}
+            onClick={() => void saveServerUrl()}
+            data-testid="save-server-url"
+          >
+            {busy === 'Save server URL' ? 'Saving…' : 'Save'}
+          </Button>
+        </CardContent>
+      </Card>
+
       {!state.activated && (
         <Card>
           <CardHeader>
             <CardTitle>Activate device</CardTitle>
-            <CardDescription>Paste the activation token provided by the ERP admin.</CardDescription>
+            <CardDescription>
+              Paste an activation code, an activation link, or an existing <code>dev_live_…</code> device token.
+            </CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col gap-3 sm:flex-row sm:items-end">
             <div className="flex-1 space-y-2">
@@ -120,17 +167,40 @@ export default function SyncPage() {
                 id="activation-token"
                 value={activationToken}
                 onChange={(e) => setActivationToken(e.target.value)}
-                placeholder="paste token…"
+                placeholder="activation code, link, or dev_live_ token…"
                 data-testid="activation-token"
+              />
+            </div>
+            <div className="flex-1 space-y-2">
+              <Label htmlFor="provision-tenant">Tenant (bare device token only)</Label>
+              <Input
+                id="provision-tenant"
+                value={provisionTenant}
+                onChange={(e) => setProvisionTenant(e.target.value)}
+                placeholder="tenant slug or id"
+                data-testid="provision-tenant"
               />
             </div>
             <Button
               disabled={!activationToken || busy !== null}
               onClick={() =>
                 void run('Activate', async () => {
-                  await engine.activate(activationToken.trim());
+                  const kind = await engine.activateFromInput(
+                    activationToken.trim(),
+                    provisionTenant.trim() || undefined
+                  );
                   setActivationToken('');
-                  toast.add({ title: 'Device activated', type: 'success' });
+                  toast.add({
+                    title: kind === 'activated' ? 'Device activated' : 'Device provisioned',
+                    type: 'success',
+                  });
+                  // End-to-end data-access check: read an entity from the backend.
+                  const check = await engine.testConnection();
+                  if (check.success) {
+                    toast.add({ title: `Data access OK (${check.durationMs}ms)`, type: 'success' });
+                  } else {
+                    toast.add({ title: 'Data access failed', description: check.error, type: 'error' });
+                  }
                 })
               }
               data-testid="activate-button"
@@ -170,6 +240,30 @@ export default function SyncPage() {
             data-testid="sync-now"
           >
             {busy === 'Sync now' ? 'Syncing…' : 'Sync now'}
+          </Button>
+          <Button
+            variant="outline"
+            disabled={busy !== null || !state.activated}
+            onClick={() => {
+              if (
+                !window.confirm(
+                  "Clear this device's activation? You'll need a new activation token to activate again."
+                )
+              ) {
+                return;
+              }
+              void run('Clear activation', async () => {
+                await engine.clearActivation();
+                toast.add({
+                  title: 'Activation cleared',
+                  description: 'Paste a new activation token in the card above to activate again.',
+                  type: 'success',
+                });
+              });
+            }}
+            data-testid="clear-activation"
+          >
+            {busy === 'Clear activation' ? 'Clearing…' : 'Clear activation'}
           </Button>
           <Button
             variant="outline"

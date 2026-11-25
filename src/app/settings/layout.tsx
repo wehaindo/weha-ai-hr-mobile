@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { redirect, usePathname } from 'next/navigation';
-import { SettingsIcon, SparklesIcon, UsersIcon, InfoIcon, CpuIcon, FileTextIcon, PlugIcon, CloudIcon, RadioIcon, CloudSyncIcon, HomeIcon, LayoutDashboardIcon, ReceiptIcon, ShieldIcon, SaveIcon, MicIcon, ArchiveIcon, FlaskConical, BellIcon } from 'lucide-react';
+import { SettingsIcon, SparklesIcon, UsersIcon, InfoIcon, CpuIcon, FileTextIcon, PlugIcon, RadioIcon, CloudSyncIcon, HomeIcon, LayoutDashboardIcon, ReceiptIcon, ShieldIcon, SaveIcon, MicIcon, ArchiveIcon, FlaskConical, BellIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import deviceConfig, { type ModuleKey } from '@/device.config';
 
@@ -15,7 +15,6 @@ const TABS: { href: string; label: string; icon: typeof HomeIcon; module?: Modul
   { href: '/settings/print-templates', label: 'Templates', icon: FileTextIcon, module: 'print' },
   { href: '/settings/receipt', label: 'Receipt', icon: ReceiptIcon, module: 'print' },
   { href: '/settings/integrations', label: 'Integrations', icon: PlugIcon, module: 'integration' },
-  { href: '/settings/datahub', label: 'Data Hub', icon: CloudIcon, module: 'datahub' },
   { href: '/settings/testing', label: 'Testing', icon: FlaskConical, module: 'testing' },
   { href: '/settings/cloud-sync', label: 'Cloud Sync', icon: CloudSyncIcon, module: 'cloud' },
   { href: '/settings/ai-voice', label: 'Ai Voice', icon: MicIcon, module: 'aiVoice' },

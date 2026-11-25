@@ -7,11 +7,13 @@ import deviceConfig from '@/device.config';
 import { useAuthStore } from '@/stores/auth';
 import { authenticate, authenticateWithCredentials, authenticateWithMobile, authenticateWithMobileOtp, fetchActiveUsers, requestMobileLoginCode, type LoginUser } from '../actions';
 import { MobileAuthError } from '@/integration/mobile-auth/client';
-import { getMobileTenantSlug } from '../mobile-session';
+import { getMobileTenantSlug, setMobileTenantSlug } from '../mobile-session';
+import { toast } from '@/components/ui/toast';
 import UserAvatar from './UserAvatar';
 import PinInput from './PinInput';
 import PasswordLogin from './PasswordLogin';
 import MobileLogin, { type MobileLoginView } from './MobileLogin';
+import TenantSetup from './TenantSetup';
 
 export default function LoginScreen() {
   const bridge = useBridge();
@@ -23,9 +25,21 @@ export default function LoginScreen() {
   const [users, setUsers] = useState<LoginUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<LoginUser | null>(null);
-  const [mode, setMode] = useState<'pin' | 'password' | 'mobile'>('pin');
+  // Build-time enabled types (NEXT_PUBLIC_LOGIN_METHOD). The user SWITCHES
+  // between them on this page (HRD-mobile style toggle links).
+  const enabled = deviceConfig.loginMethods;
+  const [mode, setMode] = useState<'pin' | 'password' | 'mobile'>(
+    enabled.includes('pin') ? 'pin' : enabled[0]
+  );
+  // Toggle links to every other enabled type (pin is reached via Back when enabled).
+  const otherMethods = enabled.filter((m) => m !== mode && m !== 'pin') as Array<'password' | 'mobile'>;
+  // Back returns to the pin grid — only when pin is actually enabled (never a dead end).
+  const showBack = enabled.includes('pin') && mode !== 'pin';
   const [mobileView, setMobileView] = useState<MobileLoginView>('password');
   const [defaultTenantSlug, setDefaultTenantSlug] = useState('');
+  // Distinguishes "no slug saved (show first-run setup)" from "still loading".
+  const [tenantSlugLoaded, setTenantSlugLoaded] = useState(false);
+  const [tenantBusy, setTenantBusy] = useState(false);
   const [pwBusy, setPwBusy] = useState(false);
   const [mobileBusy, setMobileBusy] = useState(false);
   const [error, setError] = useState<string | undefined>(undefined);
@@ -55,7 +69,8 @@ export default function LoginScreen() {
   }, [lockSeconds]);
 
   // Load the tenant slug remembered from the last successful mobile sign-in so
-  // the field is prefilled (type once; edit only to switch tenants).
+  // the field is prefilled (type once; edit only to switch tenants). Also used
+  // to decide whether the first-run tenant setup is needed.
   useEffect(() => {
     let cancelled = false;
     void getMobileTenantSlug(bridge)
@@ -64,11 +79,32 @@ export default function LoginScreen() {
       })
       .catch(() => {
         /* no remembered slug — field stays empty */
+      })
+      .finally(() => {
+        if (!cancelled) setTenantSlugLoaded(true);
       });
     return () => {
       cancelled = true;
     };
   }, [bridge]);
+
+  // First-run: persist the tenant slug, then flip to the login form (prefilled).
+  const handleTenantSetup = useCallback(
+    async (slug: string) => {
+      setError(undefined);
+      setTenantBusy(true);
+      try {
+        await setMobileTenantSlug(bridge, slug);
+        setDefaultTenantSlug(slug);
+        toast.add({ title: 'Tenant saved', description: slug, type: 'success' });
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Could not save the tenant');
+      } finally {
+        setTenantBusy(false);
+      }
+    },
+    [bridge]
+  );
 
   const handlePinSubmit = useCallback(
     async (pin: string) => {
@@ -192,19 +228,30 @@ export default function LoginScreen() {
             onCancel={() => switchMode('pin')}
             error={error}
             busy={pwBusy}
+            showBack={showBack}
           />
         ) : mode === 'mobile' ? (
-          <MobileLogin
-            view={mobileView}
-            onViewChange={setMobileView}
-            onSubmit={handleMobileSubmit}
-            onSubmitOtp={handleMobileOtpSubmit}
-            onRequestCode={handleRequestCode}
-            onCancel={() => switchMode('pin')}
-            error={error}
-            busy={mobileBusy}
-            defaultTenantSlug={defaultTenantSlug}
-          />
+          !tenantSlugLoaded ? (
+            <div className="flex justify-center py-12">
+              <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+            </div>
+          ) : defaultTenantSlug ? (
+            <MobileLogin
+              view={mobileView}
+              onViewChange={setMobileView}
+              onSubmit={handleMobileSubmit}
+              onSubmitOtp={handleMobileOtpSubmit}
+              onRequestCode={handleRequestCode}
+              onCancel={() => switchMode('pin')}
+              error={error}
+              busy={mobileBusy}
+              defaultTenantSlug={defaultTenantSlug}
+              showBack={showBack}
+            />
+          ) : (
+            // First-run: no tenant slug saved yet — configure it before the form.
+            <TenantSetup onSubmit={handleTenantSetup} busy={tenantBusy} error={error} />
+          )
         ) : loading ? (
           <div className="flex justify-center py-12">
             <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
@@ -239,37 +286,19 @@ export default function LoginScreen() {
           </p>
         )}
 
-        {mode === 'pin' && (
+        {otherMethods.length > 0 && (
           <div className="mt-6 flex flex-col items-center gap-3">
-            <button
-              type="button"
-              className="text-sm text-muted-foreground underline underline-offset-4 hover:text-foreground"
-              onClick={() => switchMode('password')}
-              data-testid="toggle-password-login"
-            >
-              Sign in with username &amp; password
-            </button>
-            <button
-              type="button"
-              className="text-sm text-muted-foreground underline underline-offset-4 hover:text-foreground"
-              onClick={() => switchMode('mobile')}
-              data-testid="toggle-mobile-login"
-            >
-              Sign in with WEHA account
-            </button>
-          </div>
-        )}
-
-        {mode === 'password' && (
-          <div className="mt-6 text-center">
-            <button
-              type="button"
-              className="text-sm text-muted-foreground underline underline-offset-4 hover:text-foreground"
-              onClick={() => switchMode('mobile')}
-              data-testid="toggle-mobile-login"
-            >
-              Sign in with WEHA account
-            </button>
+            {otherMethods.map((m) => (
+              <button
+                key={m}
+                type="button"
+                className="text-sm text-muted-foreground underline underline-offset-4 hover:text-foreground"
+                onClick={() => switchMode(m)}
+                data-testid={m === 'password' ? 'toggle-password-login' : 'toggle-mobile-login'}
+              >
+                {m === 'password' ? 'Sign in with username & password' : 'Sign in with WEHA account'}
+              </button>
+            ))}
           </div>
         )}
       </div>

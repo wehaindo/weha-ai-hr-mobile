@@ -60,7 +60,12 @@ export class DeviceClient {
   }
 
   async register(deviceCode: string): Promise<ApiResponse> {
-    return this.request('POST', '/api/device/v1/register-feature', { deviceCode });
+    // register-feature requires a tenant (X-Tenant-ID or ?tenantId=) — deviceCode rides in the body.
+    return this.request(
+      'POST',
+      `/api/device/v1/register-feature?tenantId=${encodeURIComponent(this.tenantSlug)}`,
+      { deviceCode }
+    );
   }
 
   async get<T = unknown>(configCode: string, params?: Record<string, unknown>): Promise<ListResponse<T>> {

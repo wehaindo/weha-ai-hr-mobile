@@ -4,10 +4,9 @@
 // are managed over bridge.db; only real I/O lives here.
 
 import * as net from 'net';
-import * as os from 'os';
 import * as path from 'path';
-import * as fs from 'fs';
 import { execFile } from 'child_process';
+import { sendToWindowsDriver } from './windows-print';
 
 // ESC/POS cash-drawer pulse: ESC p 0 25 255 (drawer 1, 25/255 pulse width).
 export const DRAWER_COMMAND = Uint8Array.from([0x1b, 0x70, 0x00, 0x19, 0xff]);
@@ -40,19 +39,6 @@ function sendRawTcp(target: string, bytes: Uint8Array): Promise<void> {
     socket.on('error', (err) => reject(err));
     socket.on('close', (hadError) => {
       if (!hadError) resolve();
-    });
-  });
-}
-
-function sendToWindowsDriver(printerName: string, bytes: Uint8Array): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const tmpFile = path.join(os.tmpdir(), `print-${Date.now()}.prn`);
-    fs.writeFileSync(tmpFile, Buffer.from(bytes));
-    const ps = `Get-Content -LiteralPath '${tmpFile}' -AsByteStream | Out-Printer -Name '${printerName.replace(/'/g, "''")}'`;
-    execFile('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', ps], (err) => {
-      fs.unlink(tmpFile, () => {});
-      if (err) reject(err);
-      else resolve();
     });
   });
 }

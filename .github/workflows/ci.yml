@@ -12,15 +12,27 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-node@v4
         with:
-          # package.json engines: >=24.12 — firebase 13 (FCM) requires it.
+          # firebase (FCM) + @capacitor/* require Node >= 24.12.
           node-version: 24
           cache: npm
+
       - run: npm ci
-      - run: npx tsc --noEmit
-      - run: npm run lint
-      - run: npm run test:run
-      - run: npm run build
+
+      - name: Typecheck
+        run: npx tsc --noEmit
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Unit tests
+        run: npm run test:run
+
+      # next build wants production; NODE_ENV=development makes static
+      # prerendering crash (and would ship the wrong bundle).
+      - name: Build static export
+        run: npm run build
         env:
           NODE_ENV: production

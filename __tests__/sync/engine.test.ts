@@ -128,6 +128,83 @@ describe('SyncEngine', () => {
     expect(activateCall?.body).toEqual({ token: 'activation-token' });
   });
 
+  it('provisions a pre-minted device token with no activation round-trip', async () => {
+    await engine.provision('tok_direct', 'tenant-x');
+
+    expect(useSyncStore.getState().activated).toBe(true);
+    expect(useSyncStore.getState().tenantSlug).toBe('tenant-x');
+
+    const rows = await handle.bridge.db.query<{ device_token: string; status: string }>(
+      'SELECT device_token, status FROM integrations WHERE id = ?',
+      ['erp']
+    );
+    expect(rows[0]).toEqual({ device_token: 'tok_direct', status: 'active' });
+
+    const flag = await handle.bridge.db.query<{ value: string }>(
+      "SELECT value FROM device_settings WHERE key = 'device.activated'"
+    );
+    expect(flag[0]?.value).toBe('true');
+
+    // fully local — nothing was sent to the backend
+    expect(captured.find((c) => c.path === '/api/device/activate')).toBeUndefined();
+  });
+
+  it('activateFromInput routes a device blob to provision and an activation code to activate', async () => {
+    const blob = Buffer.from(JSON.stringify({ deviceToken: 'tok_blob', tenantId: 'tenant-b' })).toString('base64url');
+    expect(await engine.activateFromInput(blob)).toBe('provisioned');
+    const provisioned = await handle.bridge.db.query<{ device_token: string }>(
+      'SELECT device_token FROM integrations WHERE id = ?',
+      ['erp']
+    );
+    expect(provisioned[0]?.device_token).toBe('tok_blob');
+    expect(captured.find((c) => c.path === '/api/device/activate')).toBeUndefined();
+
+    const code = Buffer.from(JSON.stringify({ activationToken: 'act-1', tenantId: 'tenant-a' })).toString('base64url');
+    expect(await engine.activateFromInput(code)).toBe('activated');
+    expect(captured.find((c) => c.path === '/api/device/activate')).toBeDefined();
+  });
+
+  it('activateFromInput rejects unparseable input', async () => {
+    await expect(engine.activateFromInput('not-a-token')).rejects.toThrow(/Unrecognized/);
+  });
+
+  it('keeps the activated tenant across a reload (persisted as tenantId, read on load)', async () => {
+    await engine.activate('activation-token');
+    expect(useSyncStore.getState().tenantSlug).toBe('tenant-a');
+
+    // simulate an app restart — load() re-reads the persisted integration config
+    await engine.load();
+    expect(useSyncStore.getState().tenantSlug).toBe('tenant-a');
+    expect(useSyncStore.getState().activated).toBe(true);
+  });
+
+  it('clears the activation so a new token can be used', async () => {
+    await engine.activate('activation-token');
+    expect(useSyncStore.getState().activated).toBe(true);
+
+    await engine.clearActivation();
+
+    expect(useSyncStore.getState().activated).toBe(false);
+    expect(useSyncStore.getState().deviceCode).toBeNull();
+    expect(useSyncStore.getState().tenantSlug).toBeNull();
+
+    const rows = await handle.bridge.db.query<{ device_token: string | null; status: string }>(
+      'SELECT device_token, status FROM integrations WHERE id = ?',
+      ['erp']
+    );
+    expect(rows[0].device_token).toBeNull();
+    expect(rows[0].status).toBe('inactive');
+
+    const flag = await handle.bridge.db.query<{ value: string }>(
+      "SELECT value FROM device_settings WHERE key = 'device.activated'"
+    );
+    expect(flag[0]?.value).toBe('false');
+
+    // a fresh activation still works after clearing
+    await engine.activate('activation-token');
+    expect(useSyncStore.getState().activated).toBe(true);
+  });
+
   it('drains the outbox on runNow and marks items done', async () => {
     await engine.activate('activation-token');
     await engine.registerDefinition({ entityType: 'product', direction: 'outbound', configCode: 'PRODUCT' });

@@ -132,6 +132,18 @@ describe('PerEntitySyncEngine', () => {
     expect(second.errors).toBe(0);
   });
 
+  it('force syncs bypass the schedule (manual Sync now)', async () => {
+    insertEntity();
+    await handle.bridge.db.execute("UPDATE integration_entities SET schedule = '1d' WHERE id = 'entity1'");
+    const engine = new PerEntitySyncEngine(handle.bridge, {
+      fetchImpl: async () => ({ ok: true, status: 200, json: async () => [] }) as unknown as Response,
+    });
+
+    expect((await engine.runNow()).synced).toBe(1);
+    expect((await engine.runNow()).synced).toBe(0); // schedule-gated (background honors it)
+    expect((await engine.runNow({ force: true })).synced).toBe(1); // manual button ignores it
+  });
+
   it('records an error when the fetch fails', async () => {
     const id = insertEntity();
     const engine = new PerEntitySyncEngine(handle.bridge, {
@@ -141,5 +153,30 @@ describe('PerEntitySyncEngine', () => {
     expect(result.errors).toBe(1);
     const entity = await handle.bridge.db.query<{ last_status: string }>('SELECT last_status FROM integration_entities WHERE id = ?', [id]);
     expect(entity[0].last_status).toBe('error');
+  });
+
+  it('skips `sync_source: datahub` rows — the data hub pipeline owns them', async () => {
+    const now = new Date().toISOString();
+    handle.engine.execute(
+      `INSERT INTO integration_entities (id, entity_type, name, type, status, base_url, api_key, sync_source, endpoint, sync_direction, schedule, page_size, enabled, created_at, updated_at)
+       VALUES ('entity1', 'widgets', 'Widgets', 'rest', 'idle', '', NULL, 'datahub', '', 'pull', '0s', 100, 1, ?, ?)`,
+      [now, now]
+    );
+    const engine = new PerEntitySyncEngine(handle.bridge, {
+      // If the REST engine ever picked this row up, this would throw → an error.
+      fetchImpl: async () => {
+        throw new Error('datahub row should never be fetched by the REST engine');
+      },
+    });
+
+    const result = await engine.runNow();
+    expect(result.synced).toBe(0);
+    expect(result.errors).toBe(0);
+
+    const entity = await handle.bridge.db.query<{ last_status: string | null }>(
+      'SELECT last_status FROM integration_entities WHERE id = ?',
+      ['entity1']
+    );
+    expect(entity[0].last_status).toBeNull(); // never processed
   });
 });
